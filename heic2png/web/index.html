@@ -15,6 +15,8 @@
   --ok: #1a7f4b;
   --err: #c2362b;
   --checker: #e4e8ed;
+  --ring-a: #ffffff;
+  --ring-b: rgba(0, 0, 0, 0.55);
   --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
   --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -32,6 +34,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -94,6 +97,29 @@ h1 .arrow { color: var(--accent); }
 .empty b { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: .05em; }
 .empty span { color: var(--muted); font-size: 13.5px; }
 .toast { min-height: 1.4em; font-size: 13px; color: var(--muted); }
+.card-actions { display: flex; gap: 14px; }
+
+/* モザイク編集画面: 画面全体を覆い、上に操作バー、下に画像 */
+.editor {
+  position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; gap: 10px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.ed-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.ed-title { font-family: var(--font-display); font-weight: 600; font-size: 18px; min-width: 0; overflow-wrap: anywhere; }
+.ed-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.ed-tools label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ed-tools input[type=range] { width: 110px; accent-color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: 500 13px var(--font-body); padding: 6px 12px; border: none; background: var(--surface); color: var(--fg); cursor: pointer; }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ed-hint { font-size: 12.5px; color: var(--muted); }
+.ed-stage { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 10px; background: var(--checker); }
+.ed-stage canvas { touch-action: none; cursor: none; display: block; }
+.ed-ring { position: absolute; left: 0; top: 0; pointer-events: none; border: 2px solid var(--ring-a); box-shadow: 0 0 0 1px var(--ring-b), inset 0 0 0 1px var(--ring-b); }
 </style>
 
 <div class="wrap">
@@ -113,7 +139,7 @@ h1 .arrow { color: var(--accent); }
 
   <div class="empty" id="empty">
     <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから HEIC をドラッグするか、ボタンで選びます。</span></div>
-    <div><b>2 · 変換</b><span>自動で PNG に変換され、下にプレビューが並びます。</span></div>
+    <div><b>2 · 変換</b><span>自動で PNG に変換され、下にプレビューが並びます。隠したい所は「モザイク」でタップ。</span></div>
     <div><b>3 · 保存</b><span>1 枚ずつ「保存」、または「ZIP で一括保存」で全部をひとつのファイルに。</span></div>
   </div>
 
@@ -128,6 +154,35 @@ h1 .arrow { color: var(--accent); }
     <div class="toast" id="toast" aria-live="polite"></div>
     <div class="grid" id="grid"></div>
   </section>
+</div>
+
+<div class="editor" id="editor" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <div class="ed-bar">
+    <div class="ed-title" id="edTitle"></div>
+    <div class="actions">
+      <button class="btn ghost" id="edCancel" type="button">キャンセル</button>
+      <button class="btn" id="edDone" type="button">完了</button>
+    </div>
+  </div>
+  <div class="ed-bar">
+    <div class="ed-tools">
+      <div class="seg" role="group" aria-label="スタンプの形">
+        <button type="button" id="shapeCircle" aria-pressed="true">○ 丸</button>
+        <button type="button" id="shapeSquare" aria-pressed="false">□ 四角</button>
+      </div>
+      <label for="edSize">大きさ <input type="range" id="edSize" min="2" max="40" step="1" value="10"></label>
+      <label for="edBlock">粗さ <input type="range" id="edBlock" min="0.5" max="6" step="0.5" value="2"></label>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="edUndo" type="button">元に戻す</button>
+      <button class="btn ghost" id="edReset" type="button">全部消す</button>
+    </div>
+  </div>
+  <div class="ed-hint" id="edHint">隠したい所をタップしてスタンプ。なぞると続けてかけられます。</div>
+  <div class="ed-stage" id="edStage">
+    <canvas id="edCanvas"></canvas>
+    <div class="ed-ring" id="edRing" hidden></div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -163,14 +218,14 @@ function refresh() {
 function renderCard(item) {
   const card = item.el || document.createElement("article");
   card.className = "card";
-  const status = item.png ? '<span class="pill ok">PNG</span>' : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
+  const status = item.png ? `<span class="pill ok">PNG${item.strokes?.length ? " · モザイク" : ""}</span>` : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
   card.innerHTML = `
     <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}</div>
     <div class="meta">
       <div class="name"></div>
       <div class="info"></div>
       ${item.error ? '<div class="err-msg"></div>' : ""}
-      <div class="row">${status}<button class="save" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></div>
+      <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}>モザイク</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
     </div>`;
   if (item.url) { const img = new Image(); img.src = item.url; img.alt = item.out; card.querySelector(".thumb").append(img); }
   card.querySelector(".name").textContent = item.png ? item.out : item.file.name;
@@ -178,7 +233,8 @@ function renderCard(item) {
     ? `${item.w}×${item.h} · ${fmtSize(item.file.size)} → ${fmtSize(item.png.size)}`
     : fmtSize(item.file.size);
   if (item.error) card.querySelector(".err-msg").textContent = item.error;
-  card.querySelector(".save").onclick = () => save(item);
+  card.querySelector(".dl").onclick = () => save(item);
+  card.querySelector(".mosaic").onclick = () => openEditor(item);
   item.el = card;
   return card;
 }
@@ -207,6 +263,161 @@ async function nativeToPng(file) {
   bmp.close();
   return new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"));
 }
+
+// ---- モザイク編集 ----
+// 各スタンプは { shape, size, block, pts } として記録し、元画像から再生して描く(元に戻す・やり直しが軽い)
+const ed = { item: null, base: null, strokes: [], cur: null, small: new Map(), shape: "circle", drawing: false };
+const edCanvas = $("edCanvas"), edCtx = edCanvas.getContext("2d"), edRing = $("edRing");
+const shortSide = () => Math.min(edCanvas.width, edCanvas.height);
+const brushPx = () => Math.max(4, $("edSize").value / 100 * shortSide());
+const blockPx = () => Math.max(2, Math.round($("edBlock").value / 100 * shortSide()));
+
+// ブロックサイズごとに縮小画像を 1 枚作り、拡大表示するとモザイクになる
+function smallFor(b) {
+  if (!ed.small.has(b)) {
+    const c = document.createElement("canvas");
+    c.width = Math.ceil(ed.base.width / b); c.height = Math.ceil(ed.base.height / b);
+    c.getContext("2d").drawImage(ed.base, 0, 0, ed.base.width / b, ed.base.height / b);
+    ed.small.set(b, c);
+  }
+  return ed.small.get(b);
+}
+
+function stamp(x, y, st) {
+  const b = st.block, r = st.size / 2, small = smallFor(b);
+  const x0 = Math.max(0, Math.floor((x - r) / b) * b), y0 = Math.max(0, Math.floor((y - r) / b) * b);
+  const x1 = Math.min(small.width * b, Math.ceil((x + r) / b) * b), y1 = Math.min(small.height * b, Math.ceil((y + r) / b) * b);
+  if (x1 <= x0 || y1 <= y0) return;
+  edCtx.save();
+  edCtx.beginPath();
+  if (st.shape === "circle") edCtx.arc(x, y, r, 0, Math.PI * 2); else edCtx.rect(x - r, y - r, st.size, st.size);
+  edCtx.clip();
+  edCtx.imageSmoothingEnabled = false;
+  edCtx.drawImage(small, x0 / b, y0 / b, (x1 - x0) / b, (y1 - y0) / b, x0, y0, x1 - x0, y1 - y0);
+  edCtx.restore();
+}
+
+// 画面に収まるよう表示サイズだけ合わせる(描画は元の解像度のまま)
+function fitCanvas() {
+  if ($("editor").hidden || !ed.base) return;
+  const s = $("edStage").getBoundingClientRect();
+  const k = Math.min(s.width / edCanvas.width, s.height / edCanvas.height);
+  edCanvas.style.width = edCanvas.width * k + "px";
+  edCanvas.style.height = edCanvas.height * k + "px";
+}
+window.addEventListener("resize", fitCanvas);
+
+function redraw() {
+  edCtx.drawImage(ed.base, 0, 0);
+  for (const st of ed.strokes) for (const [x, y] of st.pts) stamp(x, y, st);
+  $("edUndo").disabled = $("edReset").disabled = ed.strokes.length === 0;
+}
+
+async function openEditor(item) {
+  if (!item.png) return;
+  item.basePng ??= item.png;
+  const bmp = await createImageBitmap(item.basePng);
+  const base = document.createElement("canvas");
+  base.width = bmp.width; base.height = bmp.height;
+  base.getContext("2d").drawImage(bmp, 0, 0);
+  bmp.close();
+  Object.assign(ed, { item, base, strokes: (item.strokes || []).slice(), cur: null, drawing: false });
+  ed.small.clear();
+  edCanvas.width = base.width; edCanvas.height = base.height;
+  $("edTitle").textContent = `モザイク · ${item.out}`;
+  redraw();
+  $("editor").hidden = false;
+  document.body.style.overflow = "hidden";
+  fitCanvas();
+  $("edDone").focus();
+}
+
+function closeEditor() {
+  $("editor").hidden = true;
+  document.body.style.overflow = "";
+  edRing.hidden = true;
+  ed.base = null; ed.small.clear();
+  ed.item?.el?.querySelector(".mosaic")?.focus();
+  ed.item = null;
+}
+
+async function finishEditor() {
+  const item = ed.item;
+  if (!item) return;
+  $("edDone").disabled = true;
+  try {
+    const blob = ed.strokes.length
+      ? await new Promise((res, rej) => edCanvas.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"))
+      : item.basePng;
+    URL.revokeObjectURL(item.url);
+    item.png = blob; item.url = URL.createObjectURL(blob); item.strokes = ed.strokes.slice();
+    closeEditor();
+    renderCard(item); refresh();
+    toast(item.strokes.length ? `${item.out} にモザイクをかけました。` : `${item.out} のモザイクを外しました。`);
+  } catch (e) {
+    toast(`モザイクを保存できませんでした (${e?.message || e})。`);
+  } finally {
+    $("edDone").disabled = false;
+  }
+}
+
+function toImage(e) {
+  const r = edCanvas.getBoundingClientRect();
+  return [(e.clientX - r.left) * edCanvas.width / r.width, (e.clientY - r.top) * edCanvas.height / r.height];
+}
+
+function moveRing(e) {
+  const c = edCanvas.getBoundingClientRect(), s = $("edStage").getBoundingClientRect();
+  const d = brushPx() * c.width / edCanvas.width;
+  Object.assign(edRing.style, {
+    width: d + "px", height: d + "px", borderRadius: ed.shape === "circle" ? "50%" : "2px",
+    transform: `translate(${e.clientX - s.left - d / 2}px, ${e.clientY - s.top - d / 2}px)`,
+  });
+  edRing.hidden = false;
+}
+
+edCanvas.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  edCanvas.setPointerCapture(e.pointerId);
+  moveRing(e);
+  const [x, y] = toImage(e);
+  ed.cur = { shape: ed.shape, size: brushPx(), block: blockPx(), pts: [[x, y]] };
+  ed.strokes.push(ed.cur);
+  ed.drawing = true;
+  stamp(x, y, ed.cur);
+  $("edUndo").disabled = $("edReset").disabled = false;
+});
+edCanvas.addEventListener("pointermove", (e) => {
+  moveRing(e);
+  if (!ed.drawing) return;
+  const [x, y] = toImage(e), st = ed.cur, [lx, ly] = st.pts[st.pts.length - 1];
+  const dist = Math.hypot(x - lx, y - ly), step = st.size * 0.3;
+  for (let t = step; t <= dist; t += step) {
+    const p = [lx + (x - lx) * t / dist, ly + (y - ly) * t / dist];
+    st.pts.push(p); stamp(p[0], p[1], st);
+  }
+});
+const endStroke = () => { ed.drawing = false; ed.cur = null; };
+edCanvas.addEventListener("pointerup", endStroke);
+edCanvas.addEventListener("pointercancel", endStroke);
+edCanvas.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") edRing.hidden = true; });
+
+function setShape(shape) {
+  ed.shape = shape;
+  $("shapeCircle").setAttribute("aria-pressed", shape === "circle");
+  $("shapeSquare").setAttribute("aria-pressed", shape === "square");
+}
+$("shapeCircle").onclick = () => setShape("circle");
+$("shapeSquare").onclick = () => setShape("square");
+$("edUndo").onclick = () => { ed.strokes.pop(); redraw(); };
+$("edReset").onclick = () => { ed.strokes = []; redraw(); };
+$("edCancel").onclick = closeEditor;
+$("edDone").onclick = finishEditor;
+document.addEventListener("keydown", (e) => {
+  if ($("editor").hidden) return;
+  if (e.key === "Escape") closeEditor();
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); $("edUndo").click(); }
+});
 
 async function libToPng(file) {
   let lib;
@@ -279,6 +490,7 @@ $("saveAll").onclick = async () => {
 };
 $("clear").onclick = () => {
   items.forEach((i) => i.url && URL.revokeObjectURL(i.url));
+  if (!$("editor").hidden) closeEditor();
   items.length = 0; $("grid").replaceChildren(); toast(""); refresh();
 };
 
