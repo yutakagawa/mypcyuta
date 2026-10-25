@@ -64,7 +64,17 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+#results { display: flex; flex-direction: column; gap: 14px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+/* 保存設定: 形式・画質と、撮影情報を消すことの案内 */
+.settings { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.settings .lbl { font-size: 13px; color: var(--muted); font-weight: 500; }
+.set-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.set-group input[type=range] { width: 120px; accent-color: var(--accent); }
+.q-val { font-family: var(--font-mono); font-size: 12px; color: var(--fg); min-width: 2.5em; font-variant-numeric: tabular-nums; }
+.privacy { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ok); flex: 1 1 260px; min-width: 0; }
+.privacy svg { flex: none; width: 18px; height: 18px; }
+.gps { font-size: 12px; color: var(--ok); }
 .count { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -114,6 +124,7 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .seg button { font: 500 13px var(--font-body); padding: 6px 12px; border: none; background: var(--surface); color: var(--fg); cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+.seg button:disabled { color: var(--muted); opacity: .5; cursor: not-allowed; }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ed-hint { font-size: 12.5px; color: var(--muted); }
 .ed-stage { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 10px; background: var(--checker); }
@@ -142,11 +153,11 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
   <header>
     <div class="brand">
       <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6" fill="#ffffff"/><path d="M21 16l-5-5-8 8"/></svg></div>
-      <h1>ピクポン<small>HEIC → PNG · モザイク · トリミング</small></h1>
+      <h1>ピクポン<small>HEIC → PNG / JPEG · モザイク · トリミング</small></h1>
     </div>
     <span class="tag">写真はこの端末から出ません</span>
   </header>
-  <p class="lead">iPhone の写真(.heic)をポンと入れるだけで PNG に。隠したい所にモザイク、いらない所はトリミング。変換も編集もこのページの中だけで行います。</p>
+  <p class="lead">iPhone の写真(.heic)をポンと入れるだけで PNG や JPEG に。位置情報は自動で消えます。隠したい所にモザイク、いらない所はトリミング。変換も編集もこのページの中だけで行います。</p>
 
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="HEIC ファイルを選ぶ">
     <strong>ここに HEIC ファイルをドロップ</strong>
@@ -158,11 +169,23 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 
   <div class="empty" id="empty">
     <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから HEIC をドラッグするか、ボタンで選びます。</span></div>
-    <div><b>2 · 変換</b><span>自動で PNG に変換され、下にプレビューが並びます。「編集」でモザイクやトリミングもできます。</span></div>
-    <div><b>3 · 保存</b><span>1 枚ずつ「保存」、または「ZIP で一括保存」で全部をひとつのファイルに。</span></div>
+    <div><b>2 · 変換</b><span>自動で変換され、下にプレビューが並びます。「編集」でモザイクやトリミングもできます。</span></div>
+    <div><b>3 · 保存</b><span>PNG・JPEG・WebP から選んで保存。位置情報などの撮影情報は自動で消えます。</span></div>
   </div>
 
   <section id="results" hidden>
+    <div class="settings">
+      <div class="set-group">
+        <span class="lbl" id="fmtLbl">保存形式</span>
+        <div class="seg" role="group" aria-labelledby="fmtLbl" id="formats">
+          <button type="button" data-f="png" aria-pressed="true">PNG</button>
+          <button type="button" data-f="jpeg" aria-pressed="false">JPEG</button>
+          <button type="button" data-f="webp" aria-pressed="false">WebP</button>
+        </div>
+      </div>
+      <label class="set-group" for="quality" id="qualityBox"><span class="lbl">画質</span><input type="range" id="quality" min="50" max="100" step="1" value="90"><span class="q-val" id="qVal">90</span></label>
+      <div class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span>位置情報・撮影日時・機種などの撮影情報は、保存する画像から消えます。</span></div>
+    </div>
     <div class="toolbar">
       <span class="count" id="count"></span>
       <div class="actions">
@@ -244,6 +267,94 @@ const HEIC_RE = /\.(heic|heif|hif)$/i;
 const fmtSize = (n) => n < 1024 ? n + " B" : n < 1024 * 1024 ? (n / 1024).toFixed(0) + " KB" : (n / 1024 / 1024).toFixed(1) + " MB";
 const pngName = (name) => name.replace(/\.[^.]+$/, "") + ".png";
 
+// ---- 保存形式 ----
+const FORMATS = { png: { mime: "image/png", ext: ".png", label: "PNG" }, jpeg: { mime: "image/jpeg", ext: ".jpg", label: "JPEG" }, webp: { mime: "image/webp", ext: ".webp", label: "WebP" } };
+const canWebp = (() => { try { return document.createElement("canvas").toDataURL("image/webp").startsWith("data:image/webp"); } catch { return false; } })();
+const out = { format: "png", quality: 90 };
+try { Object.assign(out, JSON.parse(localStorage.getItem("pikupon:out") || "{}")); } catch {}
+if (!FORMATS[out.format] || (out.format === "webp" && !canWebp)) out.format = "png";
+const fmt = () => FORMATS[out.format];
+const encKey = () => out.format === "png" ? "png" : `${out.format}:${out.quality}`;
+const outName = (item) => item.out.replace(/\.png$/i, fmt().ext);
+
+// PNG を基準に持ち、保存のときに選んだ形式へ書き出す(canvas を通すので撮影情報は残らない)
+async function encode(item) {
+  if (out.format === "png") return item.png;
+  const key = encKey();
+  if (item.enc?.key === key && item.enc.src === item.png) return item.enc.blob;
+  const bmp = await createImageBitmap(item.png);
+  const c = document.createElement("canvas");
+  c.width = bmp.width; c.height = bmp.height;
+  const ctx = c.getContext("2d");
+  // JPEG は透明を持てないので白で塗ってから描く
+  if (out.format === "jpeg") { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height); }
+  ctx.drawImage(bmp, 0, 0);
+  bmp.close();
+  const blob = await new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error(`${fmt().label} を作れませんでした`)), fmt().mime, out.quality / 100));
+  item.enc = { key, src: item.png, blob };
+  return blob;
+}
+
+// 形式や画質を変えたら、各カードの保存後サイズを順に計算し直す
+let sizeRun = 0;
+async function updateSizes() {
+  const run = ++sizeRun;
+  for (const item of items.filter((i) => i.png)) {
+    if (run !== sizeRun) return;
+    try { await encode(item); } catch {}
+    if (run === sizeRun) renderInfo(item);
+  }
+}
+
+function renderInfo(item) {
+  const el = item.el?.querySelector(".info");
+  if (!el) return;
+  if (!item.png) { el.textContent = fmtSize(item.file.size); return; }
+  const blob = out.format === "png" ? item.png : item.enc?.key === encKey() && item.enc.src === item.png ? item.enc.blob : null;
+  el.textContent = `${item.w}×${item.h} · ${fmtSize(item.file.size)} → ${blob ? fmtSize(blob.size) : "計算中…"}`;
+  item.el.querySelector(".name").textContent = outName(item);
+}
+
+function setFormat(f) {
+  out.format = f;
+  document.querySelectorAll("#formats button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.f === f));
+  $("qualityBox").hidden = f === "png";
+  try { localStorage.setItem("pikupon:out", JSON.stringify(out)); } catch {}
+  items.forEach((i) => i.el && renderCard(i));
+  updateSizes();
+}
+
+// ファイル内の Exif ブロック(JPEG・HEIC 共通の "Exif\0\0" + TIFF)を探し、GPS の緯度が入っているかだけ調べる
+async function detectGps(item) {
+  try {
+    const buf = new Uint8Array(await item.file.arrayBuffer());
+    for (let i = buf.indexOf(0x45); i !== -1 && i < buf.length - 14; i = buf.indexOf(0x45, i + 1)) {
+      if (buf[i + 1] !== 0x78 || buf[i + 2] !== 0x69 || buf[i + 3] !== 0x66 || buf[i + 4] || buf[i + 5]) continue;
+      if (hasGpsLatitude(new DataView(buf.buffer, i + 6))) { item.gps = true; return; }
+    }
+  } catch {}
+  item.gps = false;
+}
+
+function hasGpsLatitude(v) {
+  const le = v.getUint16(0) === 0x4949;
+  if (!le && v.getUint16(0) !== 0x4d4d) return false;
+  const u16 = (o) => v.getUint16(o, le), u32 = (o) => v.getUint32(o, le);
+  const findTag = (ifd, tag) => {
+    const n = u16(ifd);
+    for (let k = 0; k < n; k++) { const e = ifd + 2 + k * 12; if (u16(e) === tag) return e; }
+    return -1;
+  };
+  const gpsPtr = findTag(u32(4), 0x8825);
+  if (gpsPtr < 0) return false;
+  const lat = findTag(u32(gpsPtr + 8), 0x0002);
+  if (lat < 0) return false;
+  // 緯度は分数 3 つ。全部 0 なら位置情報なしとみなす
+  const off = u32(lat + 8);
+  for (let k = 0; k < 3; k++) if (u32(off + k * 8) !== 0) return true;
+  return false;
+}
+
 function toast(msg) { $("toast").textContent = msg; }
 
 function refresh() {
@@ -260,20 +371,20 @@ function renderCard(item) {
   const card = item.el || document.createElement("article");
   card.className = "card";
   const edits = [item.strokes?.length && "モザイク", item.crop && "トリミング"].filter(Boolean);
-  const status = item.png ? `<span class="pill ok">${["PNG", ...edits].join(" · ")}</span>` : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
+  const status = item.png ? `<span class="pill ok">${[fmt().label, ...edits].join(" · ")}</span>` : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
   card.innerHTML = `
     <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}</div>
     <div class="meta">
       <div class="name"></div>
       <div class="info"></div>
+      ${item.gps ? '<div class="gps">位置情報あり → 保存時に削除</div>' : ""}
       ${item.error ? '<div class="err-msg"></div>' : ""}
       <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}>編集</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
     </div>`;
-  if (item.url) { const img = new Image(); img.src = item.url; img.alt = item.out; card.querySelector(".thumb").append(img); }
-  card.querySelector(".name").textContent = item.png ? item.out : item.file.name;
-  card.querySelector(".info").textContent = item.png
-    ? `${item.w}×${item.h} · ${fmtSize(item.file.size)} → ${fmtSize(item.png.size)}`
-    : fmtSize(item.file.size);
+  if (item.url) { const img = new Image(); img.src = item.url; img.alt = outName(item); card.querySelector(".thumb").append(img); }
+  card.querySelector(".name").textContent = item.file.name;
+  item.el = card;
+  renderInfo(item);
   if (item.error) card.querySelector(".err-msg").textContent = item.error;
   card.querySelector(".dl").onclick = () => save(item);
   card.querySelector(".mosaic").onclick = () => openEditor(item);
@@ -287,6 +398,7 @@ async function convert(item) {
     item.url = URL.createObjectURL(item.png);
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = item.url; });
     item.w = img.naturalWidth; item.h = img.naturalHeight;
+    await detectGps(item);
   } catch (e) {
     console.error("convert failed", item.file.name, e);
     item.error = e?.libLoad
@@ -294,6 +406,7 @@ async function convert(item) {
       : `読み込めませんでした (${e?.message || e})。ファイルが壊れていないか確認してください。`;
   }
   renderCard(item); refresh();
+  if (item.png && out.format !== "png") updateSizes();
 }
 
 // Safari など HEIC を直接読めるブラウザ、または iPhone が JPEG に変換して渡してきた場合
@@ -369,7 +482,7 @@ async function openEditor(item) {
   Object.assign(ed, { item, base, strokes: (item.strokes || []).slice(), cur: null, drawing: false, crop: item.crop ? { ...item.crop } : null, drag: null });
   ed.small.clear();
   edCanvas.width = base.width; edCanvas.height = base.height;
-  $("edTitle").textContent = `編集 · ${item.out}`;
+  $("edTitle").textContent = `編集 · ${outName(item)}`;
   redraw();
   $("editor").hidden = false;
   document.body.style.overflow = "hidden";
@@ -408,7 +521,8 @@ async function finishEditor() {
     closeEditor();
     renderCard(item); refresh();
     const edits = [item.strokes.length && "モザイク", crop && "トリミング"].filter(Boolean);
-    toast(edits.length ? `${item.out} に${edits.join("と")}を反映しました。` : `${item.out} を元の画像に戻しました。`);
+    if (out.format !== "png") updateSizes();
+    toast(edits.length ? `${outName(item)} に${edits.join("と")}を反映しました。` : `${outName(item)} を元の画像に戻しました。`);
   } catch (e) {
     toast(`編集を保存できませんでした (${e?.message || e})。`);
   } finally {
@@ -580,8 +694,9 @@ async function addFiles(list) {
 async function save(item) {
   if (!downloads || !item.png) return false;
   try {
-    await downloads.save({ filename: item.out, data: item.png });
-    toast(`${item.out} を保存しました。`);
+    const name = outName(item);
+    await downloads.save({ filename: name, data: await encode(item) });
+    toast(`${name} を保存しました。`);
     return true;
   } catch (e) {
     if (e?.code === "declined") toast("保存をキャンセルしました。");
@@ -595,8 +710,9 @@ async function save(item) {
 function uniqueNames(list) {
   const used = new Set();
   return list.map((item) => {
-    let name = item.out, n = 2;
-    while (used.has(name.toLowerCase())) name = item.out.replace(/\.png$/i, ` (${n++}).png`);
+    const first = outName(item), ext = fmt().ext;
+    let name = first, n = 2;
+    while (used.has(name.toLowerCase())) name = first.slice(0, -ext.length) + ` (${n++})${ext}`;
     used.add(name.toLowerCase());
     return name;
   });
@@ -610,11 +726,15 @@ $("saveAll").onclick = async () => {
   toast(`${done.length} 枚を ZIP にまとめています…`);
   try {
     const zip = new JSZip();
-    uniqueNames(done).forEach((name, i) => zip.file(name, done[i].png));
-    // PNG は圧縮済みなので無圧縮で格納して速くする
+    const names = uniqueNames(done);
+    for (let i = 0; i < done.length; i++) {
+      toast(`${fmt().label} に書き出しています… ${i + 1} / ${done.length}`);
+      zip.file(names[i], await encode(done[i]));
+    }
+    // 画像は圧縮済みなので無圧縮で格納して速くする
     const data = await zip.generateAsync({ type: "blob", compression: "STORE" });
     const d = new Date(), pad = (x) => String(x).padStart(2, "0");
-    const filename = `heic2png_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.zip`;
+    const filename = `pikupon_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.zip`;
     await downloads.save({ filename, data });
     toast(`${done.length} 枚を ${filename} に保存しました。`);
   } catch (e) {
@@ -626,6 +746,15 @@ $("saveAll").onclick = async () => {
     refresh();
   }
 };
+document.querySelectorAll("#formats button").forEach((b) => {
+  if (b.dataset.f === "webp" && !canWebp) { b.disabled = true; b.title = "このブラウザは WebP の書き出しに対応していません"; }
+  b.onclick = () => setFormat(b.dataset.f);
+});
+$("quality").value = out.quality; $("qVal").textContent = out.quality;
+$("quality").oninput = () => { $("qVal").textContent = $("quality").value; };
+$("quality").onchange = () => { out.quality = +$("quality").value; setFormat(out.format); };
+setFormat(out.format);
+
 $("clear").onclick = () => {
   items.forEach((i) => i.url && URL.revokeObjectURL(i.url));
   if (!$("editor").hidden) closeEditor();
