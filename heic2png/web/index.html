@@ -17,6 +17,9 @@
   --checker: #e4e8ed;
   --ring-a: #ffffff;
   --ring-b: rgba(0, 0, 0, 0.55);
+  --shade: rgba(8, 12, 18, 0.6);
+  --shade-soft: rgba(8, 12, 18, 0.35);
+  --grid: rgba(255, 255, 255, 0.45);
   --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
   --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -99,7 +102,7 @@ h1 .arrow { color: var(--accent); }
 .toast { min-height: 1.4em; font-size: 13px; color: var(--muted); }
 .card-actions { display: flex; gap: 14px; }
 
-/* モザイク編集画面: 画面全体を覆い、上に操作バー、下に画像 */
+/* 編集画面(モザイク・トリミング): 画面全体を覆い、上に操作バー、下に画像 */
 .editor {
   position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; gap: 10px;
   padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
@@ -119,6 +122,23 @@ h1 .arrow { color: var(--accent); }
 .ed-hint { font-size: 12.5px; color: var(--muted); }
 .ed-stage { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 10px; background: var(--checker); }
 .ed-stage canvas { touch-action: none; cursor: none; display: block; }
+.ed-stage.cropping canvas { cursor: default; }
+/* トリミング枠: 外側は大きな影で暗くし、内側に三分割線を引く */
+.crop-box {
+  position: absolute; left: 0; top: 0; pointer-events: none;
+  border: 1px solid var(--ring-a); box-shadow: 0 0 0 9999px var(--shade);
+  background:
+    linear-gradient(to right, transparent calc(33.33% - .5px), var(--grid) calc(33.33% - .5px), var(--grid) calc(33.33% + .5px), transparent calc(33.33% + .5px), transparent calc(66.66% - .5px), var(--grid) calc(66.66% - .5px), var(--grid) calc(66.66% + .5px), transparent calc(66.66% + .5px)),
+    linear-gradient(to bottom, transparent calc(33.33% - .5px), var(--grid) calc(33.33% - .5px), var(--grid) calc(33.33% + .5px), transparent calc(33.33% + .5px), transparent calc(66.66% - .5px), var(--grid) calc(66.66% - .5px), var(--grid) calc(66.66% + .5px), transparent calc(66.66% + .5px));
+}
+.ed-stage.cropping .crop-box { pointer-events: auto; cursor: move; touch-action: none; }
+.ed-stage:not(.cropping) .crop-box { background: none; box-shadow: 0 0 0 9999px var(--shade-soft); border-style: dashed; }
+.crop-box .h { position: absolute; width: 22px; height: 22px; display: none; touch-action: none; }
+.ed-stage.cropping .crop-box .h { display: block; }
+.crop-box .h::after { content: ""; position: absolute; inset: 6px; background: var(--ring-a); border: 1px solid var(--ring-b); border-radius: 2px; }
+.h.nw { left: -11px; top: -11px; cursor: nwse-resize; } .h.se { right: -11px; bottom: -11px; cursor: nwse-resize; }
+.h.ne { right: -11px; top: -11px; cursor: nesw-resize; } .h.sw { left: -11px; bottom: -11px; cursor: nesw-resize; }
+.crop-size { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ed-ring { position: absolute; left: 0; top: 0; pointer-events: none; border: 2px solid var(--ring-a); box-shadow: 0 0 0 1px var(--ring-b), inset 0 0 0 1px var(--ring-b); }
 </style>
 
@@ -139,7 +159,7 @@ h1 .arrow { color: var(--accent); }
 
   <div class="empty" id="empty">
     <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから HEIC をドラッグするか、ボタンで選びます。</span></div>
-    <div><b>2 · 変換</b><span>自動で PNG に変換され、下にプレビューが並びます。隠したい所は「モザイク」でタップ。</span></div>
+    <div><b>2 · 変換</b><span>自動で PNG に変換され、下にプレビューが並びます。「編集」でモザイクやトリミングもできます。</span></div>
     <div><b>3 · 保存</b><span>1 枚ずつ「保存」、または「ZIP で一括保存」で全部をひとつのファイルに。</span></div>
   </div>
 
@@ -165,6 +185,12 @@ h1 .arrow { color: var(--accent); }
     </div>
   </div>
   <div class="ed-bar">
+    <div class="seg" role="group" aria-label="編集の種類">
+      <button type="button" id="modeMosaic" aria-pressed="true">モザイク</button>
+      <button type="button" id="modeCrop" aria-pressed="false">トリミング</button>
+    </div>
+  </div>
+  <div class="ed-bar" id="mosaicTools">
     <div class="ed-tools">
       <div class="seg" role="group" aria-label="スタンプの形">
         <button type="button" id="shapeCircle" aria-pressed="true">○ 丸</button>
@@ -178,9 +204,25 @@ h1 .arrow { color: var(--accent); }
       <button class="btn ghost" id="edReset" type="button">全部消す</button>
     </div>
   </div>
-  <div class="ed-hint" id="edHint">隠したい所をタップしてスタンプ。なぞると続けてかけられます。</div>
+  <div class="ed-bar" id="cropTools" hidden>
+    <div class="ed-tools">
+      <div class="seg" role="group" aria-label="縦横比" id="ratios">
+        <button type="button" data-r="0" aria-pressed="true">自由</button>
+        <button type="button" data-r="1" aria-pressed="false">1:1</button>
+        <button type="button" data-r="1.3333" aria-pressed="false">4:3</button>
+        <button type="button" data-r="0.75" aria-pressed="false">3:4</button>
+        <button type="button" data-r="1.7778" aria-pressed="false">16:9</button>
+      </div>
+      <span class="crop-size" id="cropSize"></span>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="cropReset" type="button">トリミング解除</button>
+    </div>
+  </div>
+  <div class="ed-hint" id="edHint"></div>
   <div class="ed-stage" id="edStage">
     <canvas id="edCanvas"></canvas>
+    <div class="crop-box" id="cropBox" hidden><i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i></div>
     <div class="ed-ring" id="edRing" hidden></div>
   </div>
 </div>
@@ -218,14 +260,15 @@ function refresh() {
 function renderCard(item) {
   const card = item.el || document.createElement("article");
   card.className = "card";
-  const status = item.png ? `<span class="pill ok">PNG${item.strokes?.length ? " · モザイク" : ""}</span>` : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
+  const edits = [item.strokes?.length && "モザイク", item.crop && "トリミング"].filter(Boolean);
+  const status = item.png ? `<span class="pill ok">${["PNG", ...edits].join(" · ")}</span>` : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
   card.innerHTML = `
     <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}</div>
     <div class="meta">
       <div class="name"></div>
       <div class="info"></div>
       ${item.error ? '<div class="err-msg"></div>' : ""}
-      <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}>モザイク</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
+      <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}>編集</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
     </div>`;
   if (item.url) { const img = new Image(); img.src = item.url; img.alt = item.out; card.querySelector(".thumb").append(img); }
   card.querySelector(".name").textContent = item.png ? item.out : item.file.name;
@@ -264,9 +307,9 @@ async function nativeToPng(file) {
   return new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"));
 }
 
-// ---- モザイク編集 ----
+// ---- 編集(モザイク・トリミング) ----
 // 各スタンプは { shape, size, block, pts } として記録し、元画像から再生して描く(元に戻す・やり直しが軽い)
-const ed = { item: null, base: null, strokes: [], cur: null, small: new Map(), shape: "circle", drawing: false };
+const ed = { item: null, base: null, strokes: [], cur: null, small: new Map(), shape: "circle", drawing: false, mode: "mosaic", crop: null, ratio: 0, drag: null };
 const edCanvas = $("edCanvas"), edCtx = edCanvas.getContext("2d"), edRing = $("edRing");
 const shortSide = () => Math.min(edCanvas.width, edCanvas.height);
 const brushPx = () => Math.max(4, $("edSize").value / 100 * shortSide());
@@ -301,9 +344,12 @@ function stamp(x, y, st) {
 function fitCanvas() {
   if ($("editor").hidden || !ed.base) return;
   const s = $("edStage").getBoundingClientRect();
-  const k = Math.min(s.width / edCanvas.width, s.height / edCanvas.height);
+  // 四隅のつまみが切れないよう、まわりに少し余白を残す
+  const pad = 24;
+  const k = Math.min((s.width - pad) / edCanvas.width, (s.height - pad) / edCanvas.height);
   edCanvas.style.width = edCanvas.width * k + "px";
   edCanvas.style.height = edCanvas.height * k + "px";
+  layoutCrop();
 }
 window.addEventListener("resize", fitCanvas);
 
@@ -321,14 +367,15 @@ async function openEditor(item) {
   base.width = bmp.width; base.height = bmp.height;
   base.getContext("2d").drawImage(bmp, 0, 0);
   bmp.close();
-  Object.assign(ed, { item, base, strokes: (item.strokes || []).slice(), cur: null, drawing: false });
+  Object.assign(ed, { item, base, strokes: (item.strokes || []).slice(), cur: null, drawing: false, crop: item.crop ? { ...item.crop } : null, drag: null });
   ed.small.clear();
   edCanvas.width = base.width; edCanvas.height = base.height;
-  $("edTitle").textContent = `モザイク · ${item.out}`;
+  $("edTitle").textContent = `編集 · ${item.out}`;
   redraw();
   $("editor").hidden = false;
   document.body.style.overflow = "hidden";
-  fitCanvas();
+  setMode(ed.mode);
+  applyRatio(0);
   $("edDone").focus();
 }
 
@@ -346,16 +393,25 @@ async function finishEditor() {
   if (!item) return;
   $("edDone").disabled = true;
   try {
-    const blob = ed.strokes.length
-      ? await new Promise((res, rej) => edCanvas.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"))
+    const crop = isFullCrop(ed.crop) ? null : ed.crop;
+    let out = edCanvas;
+    if (crop) {
+      out = document.createElement("canvas");
+      out.width = crop.w; out.height = crop.h;
+      out.getContext("2d").drawImage(edCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+    }
+    const blob = ed.strokes.length || crop
+      ? await new Promise((res, rej) => out.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"))
       : item.basePng;
     URL.revokeObjectURL(item.url);
-    item.png = blob; item.url = URL.createObjectURL(blob); item.strokes = ed.strokes.slice();
+    item.png = blob; item.url = URL.createObjectURL(blob); item.strokes = ed.strokes.slice(); item.crop = crop;
+    item.w = out.width; item.h = out.height;
     closeEditor();
     renderCard(item); refresh();
-    toast(item.strokes.length ? `${item.out} にモザイクをかけました。` : `${item.out} のモザイクを外しました。`);
+    const edits = [item.strokes.length && "モザイク", crop && "トリミング"].filter(Boolean);
+    toast(edits.length ? `${item.out} に${edits.join("と")}を反映しました。` : `${item.out} を元の画像に戻しました。`);
   } catch (e) {
-    toast(`モザイクを保存できませんでした (${e?.message || e})。`);
+    toast(`編集を保存できませんでした (${e?.message || e})。`);
   } finally {
     $("edDone").disabled = false;
   }
@@ -377,6 +433,7 @@ function moveRing(e) {
 }
 
 edCanvas.addEventListener("pointerdown", (e) => {
+  if (ed.mode !== "mosaic") return;
   e.preventDefault();
   edCanvas.setPointerCapture(e.pointerId);
   moveRing(e);
@@ -388,6 +445,7 @@ edCanvas.addEventListener("pointerdown", (e) => {
   $("edUndo").disabled = $("edReset").disabled = false;
 });
 edCanvas.addEventListener("pointermove", (e) => {
+  if (ed.mode !== "mosaic") return;
   moveRing(e);
   if (!ed.drawing) return;
   const [x, y] = toImage(e), st = ed.cur, [lx, ly] = st.pts[st.pts.length - 1];
@@ -411,6 +469,87 @@ $("shapeCircle").onclick = () => setShape("circle");
 $("shapeSquare").onclick = () => setShape("square");
 $("edUndo").onclick = () => { ed.strokes.pop(); redraw(); };
 $("edReset").onclick = () => { ed.strokes = []; redraw(); };
+// ---- トリミング ----
+// 枠は元画像の座標 {x, y, w, h} で持ち、表示のたびに画面座標へ変換する
+const cropBox = $("cropBox");
+const isFullCrop = (c) => !c || (c.x === 0 && c.y === 0 && c.w === edCanvas.width && c.h === edCanvas.height);
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const HINTS = {
+  mosaic: "隠したい所をタップしてスタンプ。なぞると続けてかけられます。",
+  crop: "枠をドラッグして移動、四隅をドラッグして大きさを変えます。",
+};
+
+function setMode(mode) {
+  ed.mode = mode;
+  $("modeMosaic").setAttribute("aria-pressed", mode === "mosaic");
+  $("modeCrop").setAttribute("aria-pressed", mode === "crop");
+  $("mosaicTools").hidden = mode !== "mosaic";
+  $("cropTools").hidden = mode !== "crop";
+  $("edStage").classList.toggle("cropping", mode === "crop");
+  $("edHint").textContent = HINTS[mode];
+  edRing.hidden = true;
+  if (mode === "crop" && !ed.crop) ed.crop = { x: 0, y: 0, w: edCanvas.width, h: edCanvas.height };
+  fitCanvas();
+}
+
+function layoutCrop() {
+  const show = ed.crop && (ed.mode === "crop" || !isFullCrop(ed.crop));
+  cropBox.hidden = !show;
+  $("cropSize").textContent = ed.crop ? `${ed.crop.w} × ${ed.crop.h} px` : "";
+  if (!show) return;
+  const c = edCanvas.getBoundingClientRect(), s = $("edStage").getBoundingClientRect(), k = c.width / edCanvas.width;
+  Object.assign(cropBox.style, {
+    width: ed.crop.w * k + "px", height: ed.crop.h * k + "px",
+    transform: `translate(${c.left - s.left + ed.crop.x * k}px, ${c.top - s.top + ed.crop.y * k}px)`,
+  });
+}
+
+// 縦横比を指定したら、今の枠の中心に収まる最大の枠にする
+function applyRatio(r) {
+  ed.ratio = r;
+  document.querySelectorAll("#ratios button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.r === r));
+  if (!r) return layoutCrop();
+  const W = edCanvas.width, H = edCanvas.height, c = ed.crop;
+  let w = c.w, h = Math.round(w / r);
+  if (h > c.h) { h = c.h; w = Math.round(h * r); }
+  const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+  ed.crop = { x: Math.round(clamp(cx - w / 2, 0, W - w)), y: Math.round(clamp(cy - h / 2, 0, H - h)), w, h };
+  layoutCrop();
+}
+
+cropBox.addEventListener("pointerdown", (e) => {
+  if (ed.mode !== "crop") return;
+  e.preventDefault();
+  cropBox.setPointerCapture(e.pointerId);
+  ed.drag = { kind: e.target.dataset.h || "move", start: toImage(e), rect: { ...ed.crop } };
+});
+cropBox.addEventListener("pointermove", (e) => {
+  const d = ed.drag;
+  if (!d) return;
+  const W = edCanvas.width, H = edCanvas.height, [px, py] = toImage(e), r0 = d.rect;
+  if (d.kind === "move") {
+    ed.crop = { ...r0, x: Math.round(clamp(r0.x + px - d.start[0], 0, W - r0.w)), y: Math.round(clamp(r0.y + py - d.start[1], 0, H - r0.h)) };
+  } else {
+    // 掴んだ角の反対側を固定して広げる・縮める
+    const ax = d.kind.includes("w") ? r0.x + r0.w : r0.x, ay = d.kind.includes("n") ? r0.y + r0.h : r0.y;
+    const dx = d.kind.includes("w") ? -1 : 1, dy = d.kind.includes("n") ? -1 : 1;
+    const min = Math.max(16, Math.round(Math.min(W, H) * 0.03));
+    let w = clamp((px - ax) * dx, min, dx > 0 ? W - ax : ax);
+    let h = clamp((py - ay) * dy, min, dy > 0 ? H - ay : ay);
+    if (ed.ratio) { if (w / h > ed.ratio) w = h * ed.ratio; else h = w / ed.ratio; }
+    w = Math.round(w); h = Math.round(h);
+    ed.crop = { x: dx > 0 ? ax : ax - w, y: dy > 0 ? ay : ay - h, w, h };
+  }
+  layoutCrop();
+});
+const endDrag = () => { ed.drag = null; };
+cropBox.addEventListener("pointerup", endDrag);
+cropBox.addEventListener("pointercancel", endDrag);
+document.querySelectorAll("#ratios button").forEach((b) => b.onclick = () => applyRatio(+b.dataset.r));
+$("cropReset").onclick = () => { ed.crop = { x: 0, y: 0, w: edCanvas.width, h: edCanvas.height }; applyRatio(0); };
+$("modeMosaic").onclick = () => setMode("mosaic");
+$("modeCrop").onclick = () => setMode("crop");
+
 $("edCancel").onclick = closeEditor;
 $("edDone").onclick = finishEditor;
 document.addEventListener("keydown", (e) => {
