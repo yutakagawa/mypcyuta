@@ -1,0 +1,242 @@
+<title>HEIC → PNG 変換</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: 一列のワークベンチ。上にドロップゾーン、下に変換結果の「ライトボックス」グリッド */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --fg: #17202b;
+  --muted: #5d6b7a;
+  --line: #d3dae2;
+  --accent: #1f6feb;
+  --accent-ink: #ffffff;
+  --ok: #1a7f4b;
+  --err: #c2362b;
+  --checker: #e4e8ed;
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151b; --surface: #18202a; --fg: #e6ebf1; --muted: #93a1b0; --line: #2b3643;
+    --accent: #5b9dff; --accent-ink: #0b1220; --ok: #4cc38a; --err: #ff7b6e; --checker: #222c38;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151b; --surface: #18202a; --fg: #e6ebf1; --muted: #93a1b0; --line: #2b3643;
+  --accent: #5b9dff; --accent-ink: #0b1220; --ok: #4cc38a; --err: #ff7b6e; --checker: #222c38;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 48px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 .arrow { color: var(--accent); }
+.tag { font-family: var(--font-mono); font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+.lead { margin: 0; color: var(--muted); max-width: 62ch; }
+
+.drop {
+  border: 2px dashed var(--line); border-radius: 14px; background: var(--surface);
+  padding: 36px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.drop:hover, .drop:focus-visible, .drop.over { border-color: var(--accent); outline: none; }
+.drop.over { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.drop strong { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+.drop small { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.btn {
+  font: 500 14px var(--font-body); border-radius: 8px; padding: 8px 16px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+}
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.count { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.thumb {
+  aspect-ratio: 4 / 3; max-width: 100%; display: grid; place-items: center;
+  background-color: var(--surface);
+  background-image: linear-gradient(45deg, var(--checker) 25%, transparent 25%, transparent 75%, var(--checker) 75%),
+                    linear-gradient(45deg, var(--checker) 25%, transparent 25%, transparent 75%, var(--checker) 75%);
+  background-size: 16px 16px; background-position: 0 0, 8px 8px;
+}
+.thumb img { width: 100%; height: 100%; object-fit: contain; }
+.thumb .spin { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .thumb .spin { animation: none; } }
+.meta { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.name { font-weight: 500; font-size: 14px; overflow-wrap: anywhere; }
+.info { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pill { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; letter-spacing: .03em; }
+.pill.wait { color: var(--muted); } .pill.ok { color: var(--ok); } .pill.err { color: var(--err); }
+.save { font: 500 13px var(--font-body); background: none; border: none; color: var(--accent); cursor: pointer; padding: 2px 0; }
+.save:disabled { color: var(--muted); cursor: default; }
+.err-msg { color: var(--err); font-size: 12.5px; }
+
+.empty { border: 1px solid var(--line); border-radius: 10px; padding: 20px; background: var(--surface); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.empty div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.empty b { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: .05em; }
+.empty span { color: var(--muted); font-size: 13.5px; }
+.toast { min-height: 1.4em; font-size: 13px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>HEIC <span class="arrow">→</span> PNG</h1>
+    <span class="tag">ブラウザ内で変換 · アップロードなし</span>
+  </header>
+  <p class="lead">iPhone の写真(.heic / .heif)を PNG に変換します。変換はこのページの中だけで行われ、画像がどこかに送られることはありません。</p>
+
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="HEIC ファイルを選ぶ">
+    <strong>ここに HEIC ファイルをドロップ</strong>
+    <span>または</span>
+    <button class="btn" id="pick" type="button">ファイルを選ぶ</button>
+    <small>.heic .heif · 複数まとめて OK</small>
+    <input type="file" id="file" accept=".heic,.heif,.hif,image/heic,image/heif" multiple hidden>
+  </div>
+
+  <div class="empty" id="empty">
+    <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから HEIC をドラッグするか、ボタンで選びます。</span></div>
+    <div><b>2 · 変換</b><span>自動で PNG に変換され、下にプレビューが並びます。</span></div>
+    <div><b>3 · 保存</b><span>1 枚ずつ「保存」、またはまとめて「すべて保存」。</span></div>
+  </div>
+
+  <section id="results" hidden>
+    <div class="toolbar">
+      <span class="count" id="count"></span>
+      <div class="actions">
+        <button class="btn ghost" id="clear" type="button">クリア</button>
+        <button class="btn" id="saveAll" type="button" disabled>すべて保存</button>
+      </div>
+    </div>
+    <div class="toast" id="toast" aria-live="polite"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const items = [];
+let downloads;
+let downloadsReady = (window.claude?.use ? window.claude.use("downloads") : Promise.resolve(null))
+  .then((d) => { downloads = d; refresh(); return d; })
+  .catch(() => null);
+
+const HEIC_RE = /\.(heic|heif|hif)$/i;
+const fmtSize = (n) => n < 1024 ? n + " B" : n < 1024 * 1024 ? (n / 1024).toFixed(0) + " KB" : (n / 1024 / 1024).toFixed(1) + " MB";
+const pngName = (name) => name.replace(/\.[^.]+$/, "") + ".png";
+
+function toast(msg) { $("toast").textContent = msg; }
+
+function refresh() {
+  const done = items.filter((i) => i.png).length;
+  const failed = items.filter((i) => i.error).length;
+  $("results").hidden = items.length === 0;
+  $("empty").hidden = items.length > 0;
+  $("count").textContent = `${items.length} 枚中 ${done} 枚変換済み` + (failed ? ` · ${failed} 枚失敗` : "");
+  $("saveAll").disabled = !downloads || done === 0;
+  $("saveAll").title = downloads ? "" : "このビューではファイル保存が使えません";
+}
+
+function renderCard(item) {
+  const card = item.el || document.createElement("article");
+  card.className = "card";
+  const status = item.png ? '<span class="pill ok">PNG</span>' : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
+  card.innerHTML = `
+    <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}</div>
+    <div class="meta">
+      <div class="name"></div>
+      <div class="info"></div>
+      ${item.error ? '<div class="err-msg"></div>' : ""}
+      <div class="row">${status}<button class="save" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></div>
+    </div>`;
+  if (item.url) { const img = new Image(); img.src = item.url; img.alt = item.out; card.querySelector(".thumb").append(img); }
+  card.querySelector(".name").textContent = item.png ? item.out : item.file.name;
+  card.querySelector(".info").textContent = item.png
+    ? `${item.w}×${item.h} · ${fmtSize(item.file.size)} → ${fmtSize(item.png.size)}`
+    : fmtSize(item.file.size);
+  if (item.error) card.querySelector(".err-msg").textContent = item.error;
+  card.querySelector(".save").onclick = () => save(item);
+  item.el = card;
+  return card;
+}
+
+async function convert(item) {
+  try {
+    let blob = await heic2any({ blob: item.file, toType: "image/png" });
+    if (Array.isArray(blob)) blob = blob[0];
+    item.png = blob;
+    item.url = URL.createObjectURL(blob);
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = item.url; });
+    item.w = img.naturalWidth; item.h = img.naturalHeight;
+  } catch (e) {
+    item.error = "HEIC として読み込めませんでした。ファイルが壊れていないか確認してください。";
+  }
+  renderCard(item); refresh();
+}
+
+async function addFiles(list) {
+  const files = [...list];
+  const heic = files.filter((f) => HEIC_RE.test(f.name) || /heic|heif/.test(f.type));
+  const skipped = files.length - heic.length;
+  toast(skipped ? `${skipped} 件は HEIC ではないのでスキップしました。` : "");
+  for (const file of heic) {
+    const item = { file, out: pngName(file.name) };
+    items.push(item);
+    $("grid").append(renderCard(item));
+  }
+  refresh();
+  for (const item of items.filter((i) => !i.png && !i.error && !i.started)) { item.started = true; await convert(item); }
+}
+
+async function save(item) {
+  if (!downloads || !item.png) return false;
+  try {
+    await downloads.save({ filename: item.out, data: item.png });
+    toast(`${item.out} を保存しました。`);
+    return true;
+  } catch (e) {
+    if (e?.code === "declined") toast("保存をキャンセルしました。");
+    else if (e?.code === "rate_limited") toast("保存の確認画面が開いています。閉じてからもう一度押してください。");
+    else toast("このビューではファイルを保存できません。");
+    return false;
+  }
+}
+
+$("saveAll").onclick = async () => {
+  for (const item of items.filter((i) => i.png)) { if (!(await save(item))) break; }
+};
+$("clear").onclick = () => {
+  items.forEach((i) => i.url && URL.revokeObjectURL(i.url));
+  items.length = 0; $("grid").replaceChildren(); toast(""); refresh();
+};
+
+const drop = $("drop"), input = $("file");
+$("pick").onclick = (e) => { e.stopPropagation(); input.click(); };
+drop.onclick = () => input.click();
+drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } };
+input.onchange = () => { addFiles(input.files); input.value = ""; };
+["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
+
+if (typeof heic2any === "undefined") toast("変換ライブラリを読み込めませんでした。ページを再読み込みしてください。");
+refresh();
+</script>
