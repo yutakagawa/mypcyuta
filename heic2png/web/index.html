@@ -1,40 +1,32 @@
-<title>HEIC → PNG 変換</title>
+<title>ピクポン</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=IBM+Plex+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: 一列のワークベンチ。上にドロップゾーン、下に変換結果の「ライトボックス」グリッド */
+/* Layout: 一列のワークベンチ。上にドロップゾーン、下に変換結果の「ライトボックス」グリッド。
+   明るい一つの見た目に統一(ダークモードでも明るいまま) */
 :root {
-  --bg: #eef1f4;
+  --bg: #f4f9ff;
   --surface: #ffffff;
-  --fg: #17202b;
-  --muted: #5d6b7a;
-  --line: #d3dae2;
-  --accent: #1f6feb;
+  --fg: #1d2a3a;
+  --muted: #627488;
+  --line: #d9e5f1;
+  --accent: #e9542a;
   --accent-ink: #ffffff;
-  --ok: #1a7f4b;
-  --err: #c2362b;
-  --checker: #e4e8ed;
+  --accent-soft: #fff1eb;
+  --sky: #e3f1ff;
+  --ok: #129a6a;
+  --err: #db3b33;
+  --checker: #edf3f9;
   --ring-a: #ffffff;
-  --ring-b: rgba(0, 0, 0, 0.55);
-  --shade: rgba(8, 12, 18, 0.6);
-  --shade-soft: rgba(8, 12, 18, 0.35);
-  --grid: rgba(255, 255, 255, 0.45);
-  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --ring-b: rgba(29, 42, 58, 0.6);
+  --shade: rgba(244, 249, 255, 0.78);
+  --shade-soft: rgba(244, 249, 255, 0.5);
+  --grid: rgba(255, 255, 255, 0.75);
+  --font-display: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
   --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #10151b; --surface: #18202a; --fg: #e6ebf1; --muted: #93a1b0; --line: #2b3643;
-    --accent: #5b9dff; --accent-ink: #0b1220; --ok: #4cc38a; --err: #ff7b6e; --checker: #222c38;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #10151b; --surface: #18202a; --fg: #e6ebf1; --muted: #93a1b0; --line: #2b3643;
-  --accent: #5b9dff; --accent-ink: #0b1220; --ok: #4cc38a; --err: #ff7b6e; --checker: #222c38;
-  color-scheme: dark;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -45,23 +37,27 @@ body {
   padding-block: 32px 48px;
 }
 .wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
-h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
-h1 .arrow { color: var(--accent); }
-.tag { font-family: var(--font-mono); font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); display: grid; place-items: center; transform: rotate(-6deg); box-shadow: 0 6px 16px -6px var(--accent); }
+.logo svg { width: 26px; height: 26px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 5vw, 40px); line-height: 1.1; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
+h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; margin-top: 2px; }
+.tag { font-size: 12px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 4px 12px; font-weight: 500; }
 .lead { margin: 0; color: var(--muted); max-width: 62ch; }
 
 .drop {
-  border: 2px dashed var(--line); border-radius: 14px; background: var(--surface);
+  border: 2px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 20px;
+  background: linear-gradient(160deg, var(--surface) 0%, var(--sky) 100%);
   padding: 36px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
   cursor: pointer; transition: border-color .15s, background .15s;
 }
 .drop:hover, .drop:focus-visible, .drop.over { border-color: var(--accent); outline: none; }
-.drop.over { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
-.drop strong { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+.drop.over { background: var(--accent-soft); }
+.drop strong { font-family: var(--font-display); font-weight: 800; font-size: 20px; }
 .drop small { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
 .btn {
-  font: 500 14px var(--font-body); border-radius: 8px; padding: 8px 16px; cursor: pointer;
+  font: 700 14px var(--font-body); border-radius: 999px; padding: 8px 18px; cursor: pointer;
   border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
 }
 .btn.ghost { background: transparent; color: var(--accent); }
@@ -111,11 +107,11 @@ h1 .arrow { color: var(--accent); }
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .ed-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
-.ed-title { font-family: var(--font-display); font-weight: 600; font-size: 18px; min-width: 0; overflow-wrap: anywhere; }
+.ed-title { font-family: var(--font-display); font-weight: 800; font-size: 18px; min-width: 0; overflow-wrap: anywhere; }
 .ed-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 .ed-tools label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .ed-tools input[type=range] { width: 110px; accent-color: var(--accent); }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .seg button { font: 500 13px var(--font-body); padding: 6px 12px; border: none; background: var(--surface); color: var(--fg); cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -126,7 +122,7 @@ h1 .arrow { color: var(--accent); }
 /* トリミング枠: 外側は大きな影で暗くし、内側に三分割線を引く */
 .crop-box {
   position: absolute; left: 0; top: 0; pointer-events: none;
-  border: 1px solid var(--ring-a); box-shadow: 0 0 0 9999px var(--shade);
+  border: 2px solid var(--accent); box-shadow: 0 0 0 9999px var(--shade);
   background:
     linear-gradient(to right, transparent calc(33.33% - .5px), var(--grid) calc(33.33% - .5px), var(--grid) calc(33.33% + .5px), transparent calc(33.33% + .5px), transparent calc(66.66% - .5px), var(--grid) calc(66.66% - .5px), var(--grid) calc(66.66% + .5px), transparent calc(66.66% + .5px)),
     linear-gradient(to bottom, transparent calc(33.33% - .5px), var(--grid) calc(33.33% - .5px), var(--grid) calc(33.33% + .5px), transparent calc(33.33% + .5px), transparent calc(66.66% - .5px), var(--grid) calc(66.66% - .5px), var(--grid) calc(66.66% + .5px), transparent calc(66.66% + .5px));
@@ -144,10 +140,13 @@ h1 .arrow { color: var(--accent); }
 
 <div class="wrap">
   <header>
-    <h1>HEIC <span class="arrow">→</span> PNG</h1>
-    <span class="tag">ブラウザ内で変換 · アップロードなし</span>
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6" fill="#ffffff"/><path d="M21 16l-5-5-8 8"/></svg></div>
+      <h1>ピクポン<small>HEIC → PNG · モザイク · トリミング</small></h1>
+    </div>
+    <span class="tag">写真はこの端末から出ません</span>
   </header>
-  <p class="lead">iPhone の写真(.heic / .heif)を PNG に変換します。変換はこのページの中だけで行われ、画像がどこかに送られることはありません。</p>
+  <p class="lead">iPhone の写真(.heic)をポンと入れるだけで PNG に。隠したい所にモザイク、いらない所はトリミング。変換も編集もこのページの中だけで行います。</p>
 
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="HEIC ファイルを選ぶ">
     <strong>ここに HEIC ファイルをドロップ</strong>
