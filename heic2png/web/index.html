@@ -114,7 +114,7 @@ h1 .arrow { color: var(--accent); }
   <div class="empty" id="empty">
     <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから HEIC をドラッグするか、ボタンで選びます。</span></div>
     <div><b>2 · 変換</b><span>自動で PNG に変換され、下にプレビューが並びます。</span></div>
-    <div><b>3 · 保存</b><span>1 枚ずつ「保存」、またはまとめて「すべて保存」。</span></div>
+    <div><b>3 · 保存</b><span>1 枚ずつ「保存」、または「ZIP で一括保存」で全部をひとつのファイルに。</span></div>
   </div>
 
   <section id="results" hidden>
@@ -122,7 +122,7 @@ h1 .arrow { color: var(--accent); }
       <span class="count" id="count"></span>
       <div class="actions">
         <button class="btn ghost" id="clear" type="button">クリア</button>
-        <button class="btn" id="saveAll" type="button" disabled>すべて保存</button>
+        <button class="btn" id="saveAll" type="button" disabled>ZIP で一括保存</button>
       </div>
     </div>
     <div class="toast" id="toast" aria-live="polite"></div>
@@ -130,6 +130,7 @@ h1 .arrow { color: var(--accent); }
   </section>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const items = [];
@@ -241,8 +242,40 @@ async function save(item) {
   }
 }
 
+// 同名ファイルが重なったら IMG_0001 (2).png のように番号を付ける
+function uniqueNames(list) {
+  const used = new Set();
+  return list.map((item) => {
+    let name = item.out, n = 2;
+    while (used.has(name.toLowerCase())) name = item.out.replace(/\.png$/i, ` (${n++}).png`);
+    used.add(name.toLowerCase());
+    return name;
+  });
+}
+
 $("saveAll").onclick = async () => {
-  for (const item of items.filter((i) => i.png)) { if (!(await save(item))) break; }
+  const done = items.filter((i) => i.png);
+  if (!downloads || done.length === 0) return;
+  const btn = $("saveAll");
+  btn.disabled = true;
+  toast(`${done.length} 枚を ZIP にまとめています…`);
+  try {
+    const zip = new JSZip();
+    uniqueNames(done).forEach((name, i) => zip.file(name, done[i].png));
+    // PNG は圧縮済みなので無圧縮で格納して速くする
+    const data = await zip.generateAsync({ type: "blob", compression: "STORE" });
+    const d = new Date(), pad = (x) => String(x).padStart(2, "0");
+    const filename = `heic2png_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.zip`;
+    await downloads.save({ filename, data });
+    toast(`${done.length} 枚を ${filename} に保存しました。`);
+  } catch (e) {
+    if (e?.code === "declined") toast("保存をキャンセルしました。");
+    else if (e?.code === "rate_limited") toast("保存の確認画面が開いています。閉じてからもう一度押してください。");
+    else if (e?.code) toast("このビューではファイルを保存できません。");
+    else toast(`ZIP を作れませんでした (${e?.message || e})。`);
+  } finally {
+    refresh();
+  }
 };
 $("clear").onclick = () => {
   items.forEach((i) => i.url && URL.revokeObjectURL(i.url));
