@@ -107,7 +107,7 @@ h1 .arrow { color: var(--accent); }
     <strong>ここに HEIC ファイルをドロップ</strong>
     <span>または</span>
     <button class="btn" id="pick" type="button">ファイルを選ぶ</button>
-    <small>.heic .heif · 複数まとめて OK</small>
+    <small>.heic .heif · 複数まとめて OK · 初回は変換エンジン(約 3 MB)を読み込みます</small>
     <input type="file" id="file" accept=".heic,.heif,.hif,image/heic,image/heif" multiple hidden>
   </div>
 
@@ -130,7 +130,6 @@ h1 .arrow { color: var(--accent); }
   </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const items = [];
@@ -138,6 +137,11 @@ let downloads;
 let downloadsReady = (window.claude?.use ? window.claude.use("downloads") : Promise.resolve(null))
   .then((d) => { downloads = d; refresh(); return d; })
   .catch(() => null);
+
+// eval を使わない CSP 対応版の libheif。必要になったときだけ読み込む
+const HEIC_LIB_URL = "https://cdn.jsdelivr.net/npm/heic-to@1.6.5/dist/csp/heic-to.min.js";
+let heicLib;
+const loadHeicLib = () => (heicLib ??= import(HEIC_LIB_URL).catch((e) => { heicLib = null; throw e; }));
 
 const HEIC_RE = /\.(heic|heif|hif)$/i;
 const fmtSize = (n) => n < 1024 ? n + " B" : n < 1024 * 1024 ? (n / 1024).toFixed(0) + " KB" : (n / 1024 / 1024).toFixed(1) + " MB";
@@ -180,23 +184,40 @@ function renderCard(item) {
 
 async function convert(item) {
   try {
-    let blob = await heic2any({ blob: item.file, toType: "image/png" });
-    if (Array.isArray(blob)) blob = blob[0];
-    item.png = blob;
-    item.url = URL.createObjectURL(blob);
+    item.png = await nativeToPng(item.file).catch(() => null) || await libToPng(item.file);
+    item.url = URL.createObjectURL(item.png);
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = item.url; });
     item.w = img.naturalWidth; item.h = img.naturalHeight;
   } catch (e) {
-    item.error = "HEIC として読み込めませんでした。ファイルが壊れていないか確認してください。";
+    console.error("convert failed", item.file.name, e);
+    item.error = e?.libLoad
+      ? "変換ライブラリを読み込めませんでした。通信状況を確認して、もう一度ファイルを選んでください。"
+      : `読み込めませんでした (${e?.message || e})。ファイルが壊れていないか確認してください。`;
   }
   renderCard(item); refresh();
 }
 
+// Safari など HEIC を直接読めるブラウザ、または iPhone が JPEG に変換して渡してきた場合
+async function nativeToPng(file) {
+  const bmp = await createImageBitmap(file);
+  const c = document.createElement("canvas");
+  c.width = bmp.width; c.height = bmp.height;
+  c.getContext("2d").drawImage(bmp, 0, 0);
+  bmp.close();
+  return new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"));
+}
+
+async function libToPng(file) {
+  let lib;
+  try { lib = await loadHeicLib(); } catch (e) { e.libLoad = true; throw e; }
+  return lib.heicTo({ blob: file, type: "image/png" });
+}
+
 async function addFiles(list) {
   const files = [...list];
-  const heic = files.filter((f) => HEIC_RE.test(f.name) || /heic|heif/.test(f.type));
+  const heic = files.filter((f) => HEIC_RE.test(f.name) || f.type.startsWith("image/"));
   const skipped = files.length - heic.length;
-  toast(skipped ? `${skipped} 件は HEIC ではないのでスキップしました。` : "");
+  toast(skipped ? `${skipped} 件は画像ではないのでスキップしました。` : "");
   for (const file of heic) {
     const item = { file, out: pngName(file.name) };
     items.push(item);
@@ -237,6 +258,5 @@ input.onchange = () => { addFiles(input.files); input.value = ""; };
 ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
 
-if (typeof heic2any === "undefined") toast("変換ライブラリを読み込めませんでした。ページを再読み込みしてください。");
 refresh();
 </script>
