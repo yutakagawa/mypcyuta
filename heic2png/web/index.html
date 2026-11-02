@@ -103,6 +103,7 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 .thumb {
+  position: relative;
   aspect-ratio: 4 / 3; max-width: 100%; display: grid; place-items: center;
   background-color: var(--surface);
   background-image: linear-gradient(45deg, var(--checker) 25%, transparent 25%, transparent 75%, var(--checker) 75%),
@@ -116,7 +117,7 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .meta { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .name { font-weight: 500; font-size: 14px; overflow-wrap: anywhere; }
 .info { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .pill { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; letter-spacing: .03em; }
 .pill.wait { color: var(--muted); } .pill.ok { color: var(--ok); } .pill.err { color: var(--err); }
 .save { font: 500 13px var(--font-body); background: none; border: none; color: var(--accent); cursor: pointer; padding: 2px 0; }
@@ -128,7 +129,18 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .empty b { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: .05em; }
 .empty span { color: var(--muted); font-size: 13.5px; }
 .toast { min-height: 1.4em; font-size: 13px; color: var(--muted); }
-.card-actions { display: flex; gap: 14px; }
+.card-actions { display: flex; gap: 14px; margin-left: auto; white-space: nowrap; }
+.del {
+  position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer;
+  display: grid; place-items: center; box-shadow: 0 2px 8px -4px rgba(29, 42, 58, 0.4);
+}
+.del:hover, .del:focus-visible { color: var(--err); border-color: var(--err); outline: none; }
+.del svg { width: 14px; height: 14px; }
+.settings select { font: 500 13px var(--font-body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; }
+.settings select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon-btn { display: inline-flex; align-items: center; gap: 6px; }
+.icon-btn svg { width: 16px; height: 16px; }
 
 /* 編集画面(モザイク・トリミング): 画面全体を覆い、上に操作バー、下に画像 */
 .editor {
@@ -175,7 +187,7 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
   <header>
     <div class="brand">
       <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6" fill="#ffffff"/><path d="M21 16l-5-5-8 8"/></svg></div>
-      <h1>ピクポン<small>HEIC → PNG / JPEG · モザイク · トリミング</small></h1>
+      <h1>ピクポン<small>HEIC → PNG / JPEG · モザイク · トリミング · 回転</small></h1>
     </div>
     <div class="head-side">
       <span class="tag">写真はこの端末から出ません</span>
@@ -208,6 +220,16 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
           <button type="button" data-f="webp" aria-pressed="false">WebP</button>
         </div>
       </div>
+      <label class="set-group" for="maxSide"><span class="lbl">サイズ</span>
+        <select id="maxSide">
+          <option value="0">元のまま</option>
+          <option value="3840">長い辺 3840px</option>
+          <option value="2560">長い辺 2560px</option>
+          <option value="1920">長い辺 1920px</option>
+          <option value="1280">長い辺 1280px</option>
+          <option value="1080">長い辺 1080px</option>
+        </select>
+      </label>
       <label class="set-group" for="quality" id="qualityBox"><span class="lbl">画質</span><input type="range" id="quality" min="50" max="100" step="1" value="90"><span class="q-val" id="qVal">90</span></label>
       <div class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span>位置情報・撮影日時・機種などの撮影情報は、保存する画像から消えます。</span></div>
     </div>
@@ -233,18 +255,28 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
   </div>
   <div class="ed-bar">
     <div class="seg" role="group" aria-label="編集の種類">
-      <button type="button" id="modeMosaic" aria-pressed="true">モザイク</button>
+      <button type="button" id="modeMosaic" aria-pressed="true">隠す</button>
       <button type="button" id="modeCrop" aria-pressed="false">トリミング</button>
+    </div>
+    <div class="actions" role="group" aria-label="回転と反転">
+      <button class="btn ghost small icon-btn" id="rotL" type="button" title="左に 90° 回転"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v5h5"/><path d="M4.6 9A8 8 0 1 1 6 17.6"/></svg>左に回転</button>
+      <button class="btn ghost small icon-btn" id="rotR" type="button" title="右に 90° 回転"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4v5h-5"/><path d="M19.4 9A8 8 0 1 0 18 17.6"/></svg>右に回転</button>
+      <button class="btn ghost small icon-btn" id="flipH" type="button" title="左右を反転"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M8 7l-5 5 5 5z"/><path d="M16 7l5 5-5 5z"/></svg>反転</button>
     </div>
   </div>
   <div class="ed-bar" id="mosaicTools">
     <div class="ed-tools">
+      <div class="seg" role="group" aria-label="隠し方" id="kinds">
+        <button type="button" data-k="mosaic" aria-pressed="true">モザイク</button>
+        <button type="button" data-k="blur" aria-pressed="false">ぼかし</button>
+        <button type="button" data-k="fill" aria-pressed="false">黒塗り</button>
+      </div>
       <div class="seg" role="group" aria-label="スタンプの形">
         <button type="button" id="shapeCircle" aria-pressed="true">○ 丸</button>
         <button type="button" id="shapeSquare" aria-pressed="false">□ 四角</button>
       </div>
       <label for="edSize">大きさ <input type="range" id="edSize" min="2" max="40" step="1" value="10"></label>
-      <label for="edBlock">粗さ <input type="range" id="edBlock" min="0.5" max="6" step="0.5" value="2"></label>
+      <label for="edBlock" id="blockBox"><span id="blockLbl">粗さ</span> <input type="range" id="edBlock" min="0.5" max="6" step="0.5" value="2"></label>
     </div>
     <div class="actions">
       <button class="btn ghost" id="edUndo" type="button">元に戻す</button>
@@ -263,6 +295,7 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
       <span class="crop-size" id="cropSize"></span>
     </div>
     <div class="actions">
+      <button class="btn ghost" id="cropUndo" type="button">元に戻す</button>
       <button class="btn ghost" id="cropReset" type="button">トリミング解除</button>
     </div>
   </div>
@@ -311,25 +344,33 @@ const pngName = (name) => name.replace(/\.[^.]+$/, "") + ".png";
 // ---- 保存形式 ----
 const FORMATS = { png: { mime: "image/png", ext: ".png", label: "PNG" }, jpeg: { mime: "image/jpeg", ext: ".jpg", label: "JPEG" }, webp: { mime: "image/webp", ext: ".webp", label: "WebP" } };
 const canWebp = (() => { try { return document.createElement("canvas").toDataURL("image/webp").startsWith("data:image/webp"); } catch { return false; } })();
-const out = { format: "png", quality: 90 };
+const out = { format: "png", quality: 90, maxSide: 0 };
 try { Object.assign(out, JSON.parse(localStorage.getItem("pikupon:out") || "{}")); } catch {}
 if (!FORMATS[out.format] || (out.format === "webp" && !canWebp)) out.format = "png";
 const fmt = () => FORMATS[out.format];
-const encKey = () => out.format === "png" ? "png" : `${out.format}:${out.quality}`;
+const encKey = () => `${out.format}:${out.format === "png" ? "" : out.quality}:${out.maxSide}`;
+// 長い辺が上限を超えるときだけ縮小する(拡大はしない)
+function outDims(item) {
+  const k = out.maxSide && Math.max(item.w, item.h) > out.maxSide ? out.maxSide / Math.max(item.w, item.h) : 1;
+  return { w: Math.max(1, Math.round(item.w * k)), h: Math.max(1, Math.round(item.h * k)), scaled: k < 1 };
+}
+const isPassThrough = (item) => out.format === "png" && !outDims(item).scaled;
+const cachedBlob = (item) => isPassThrough(item) ? item.png : item.enc?.key === encKey() && item.enc.src === item.png ? item.enc.blob : null;
 const outName = (item) => item.out.replace(/\.png$/i, fmt().ext);
 
 // PNG を基準に持ち、保存のときに選んだ形式へ書き出す(canvas を通すので撮影情報は残らない)
 async function encode(item) {
-  if (out.format === "png") return item.png;
-  const key = encKey();
-  if (item.enc?.key === key && item.enc.src === item.png) return item.enc.blob;
+  const hit = cachedBlob(item);
+  if (hit) return hit;
+  const key = encKey(), d = outDims(item);
   const bmp = await createImageBitmap(item.png);
   const c = document.createElement("canvas");
-  c.width = bmp.width; c.height = bmp.height;
+  c.width = d.w; c.height = d.h;
   const ctx = c.getContext("2d");
   // JPEG は透明を持てないので白で塗ってから描く
   if (out.format === "jpeg") { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height); }
-  ctx.drawImage(bmp, 0, 0);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bmp, 0, 0, d.w, d.h);
   bmp.close();
   const blob = await new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error(`${fmt().label} を作れませんでした`)), fmt().mime, out.quality / 100));
   item.enc = { key, src: item.png, blob };
@@ -351,8 +392,8 @@ function renderInfo(item) {
   const el = item.el?.querySelector(".info");
   if (!el) return;
   if (!item.png) { el.textContent = fmtSize(item.file.size); return; }
-  const blob = out.format === "png" ? item.png : item.enc?.key === encKey() && item.enc.src === item.png ? item.enc.blob : null;
-  el.textContent = `${item.w}×${item.h} · ${fmtSize(item.file.size)} → ${blob ? fmtSize(blob.size) : "計算中…"}`;
+  const blob = cachedBlob(item), d = outDims(item);
+  el.textContent = `${d.w}×${d.h} · ${fmtSize(item.file.size)} → ${blob ? fmtSize(blob.size) : "計算中…"}`;
   item.el.querySelector(".name").textContent = outName(item);
 }
 
@@ -411,10 +452,10 @@ function refresh() {
 function renderCard(item) {
   const card = item.el || document.createElement("article");
   card.className = "card";
-  const edits = [item.strokes?.length && "モザイク", item.crop && "トリミング"].filter(Boolean);
+  const edits = editLabels(item);
   const status = item.png ? `<span class="pill ok">${[fmt().label, ...edits].join(" · ")}</span>` : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
   card.innerHTML = `
-    <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}</div>
+    <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}<button class="del" type="button" aria-label="この写真を外す" title="外す"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="meta">
       <div class="name"></div>
       <div class="info"></div>
@@ -429,8 +470,29 @@ function renderCard(item) {
   if (item.error) card.querySelector(".err-msg").textContent = item.error;
   card.querySelector(".dl").onclick = () => save(item);
   card.querySelector(".mosaic").onclick = () => openEditor(item);
-  item.el = card;
+  card.querySelector(".del").onclick = () => removeItem(item);
   return card;
+}
+
+const KIND_LABELS = { mosaic: "モザイク", blur: "ぼかし", fill: "黒塗り" };
+function editLabels(item) {
+  const kinds = [...new Set((item.strokes || []).map((st) => st.kind || "mosaic"))].map((k) => KIND_LABELS[k]);
+  return [item.turned && "回転", ...kinds, item.crop && "トリミング"].filter(Boolean);
+}
+
+// 1 枚だけ一覧から外す(変換中のものは変換が終わっても表示しない)
+function removeItem(item) {
+  if (ed.item === item) closeEditor();
+  const i = items.indexOf(item);
+  if (i < 0) return;
+  items.splice(i, 1);
+  item.removed = true;
+  if (item.url) URL.revokeObjectURL(item.url);
+  const next = items[i] || items[i - 1];
+  item.el?.remove();
+  toast(`${item.file.name} を外しました。`);
+  refresh();
+  (next?.el?.querySelector(".del") || $("pick")).focus();
 }
 
 async function convert(item) {
@@ -446,8 +508,9 @@ async function convert(item) {
       ? "変換ライブラリを読み込めませんでした。通信状況を確認して、もう一度ファイルを選んでください。"
       : `読み込めませんでした (${e?.message || e})。ファイルが壊れていないか確認してください。`;
   }
+  if (item.removed) return;
   renderCard(item); refresh();
-  if (item.png && out.format !== "png") updateSizes();
+  if (item.png && !isPassThrough(item)) updateSizes();
 }
 
 // Safari など HEIC を直接読めるブラウザ、または iPhone が JPEG に変換して渡してきた場合
@@ -462,7 +525,7 @@ async function nativeToPng(file) {
 
 // ---- 編集(モザイク・トリミング) ----
 // 各スタンプは { shape, size, block, pts } として記録し、元画像から再生して描く(元に戻す・やり直しが軽い)
-const ed = { item: null, base: null, strokes: [], cur: null, small: new Map(), shape: "circle", drawing: false, mode: "mosaic", crop: null, ratio: 0, drag: null };
+const ed = { item: null, base: null, strokes: [], cur: null, small: new Map(), shape: "circle", kind: "mosaic", drawing: false, mode: "mosaic", crop: null, cropHist: [], ratio: 0, drag: null, turned: false };
 const edCanvas = $("edCanvas"), edCtx = edCanvas.getContext("2d"), edRing = $("edRing");
 const shortSide = () => Math.min(edCanvas.width, edCanvas.height);
 const brushPx = () => Math.max(4, $("edSize").value / 100 * shortSide());
@@ -479,17 +542,28 @@ function smallFor(b) {
   return ed.small.get(b);
 }
 
+// モザイクは縮小画像をそのまま拡大、ぼかしは同じ縮小画像をなめらかに拡大、黒塗りは塗りつぶす
 function stamp(x, y, st) {
-  const b = st.block, r = st.size / 2, small = smallFor(b);
-  const x0 = Math.max(0, Math.floor((x - r) / b) * b), y0 = Math.max(0, Math.floor((y - r) / b) * b);
-  const x1 = Math.min(small.width * b, Math.ceil((x + r) / b) * b), y1 = Math.min(small.height * b, Math.ceil((y + r) / b) * b);
-  if (x1 <= x0 || y1 <= y0) return;
+  const kind = st.kind || "mosaic", r = st.size / 2;
   edCtx.save();
   edCtx.beginPath();
   if (st.shape === "circle") edCtx.arc(x, y, r, 0, Math.PI * 2); else edCtx.rect(x - r, y - r, st.size, st.size);
   edCtx.clip();
-  edCtx.imageSmoothingEnabled = false;
-  edCtx.drawImage(small, x0 / b, y0 / b, (x1 - x0) / b, (y1 - y0) / b, x0, y0, x1 - x0, y1 - y0);
+  if (kind === "fill") {
+    edCtx.fillStyle = "#000000";
+    edCtx.fillRect(x - r, y - r, st.size, st.size);
+  } else {
+    const b = st.block, small = smallFor(b);
+    // ぼかしは縁がにじむので 1 マス広めに取る
+    const m = kind === "blur" ? b : 0;
+    const x0 = Math.max(0, Math.floor((x - r - m) / b) * b), y0 = Math.max(0, Math.floor((y - r - m) / b) * b);
+    const x1 = Math.min(small.width * b, Math.ceil((x + r + m) / b) * b), y1 = Math.min(small.height * b, Math.ceil((y + r + m) / b) * b);
+    if (x1 > x0 && y1 > y0) {
+      edCtx.imageSmoothingEnabled = kind === "blur";
+      edCtx.imageSmoothingQuality = "high";
+      edCtx.drawImage(small, x0 / b, y0 / b, (x1 - x0) / b, (y1 - y0) / b, x0, y0, x1 - x0, y1 - y0);
+    }
+  }
   edCtx.restore();
 }
 
@@ -520,7 +594,7 @@ async function openEditor(item) {
   base.width = bmp.width; base.height = bmp.height;
   base.getContext("2d").drawImage(bmp, 0, 0);
   bmp.close();
-  Object.assign(ed, { item, base, strokes: (item.strokes || []).slice(), cur: null, drawing: false, crop: item.crop ? { ...item.crop } : null, drag: null });
+  Object.assign(ed, { item, base, strokes: (item.strokes || []).slice(), cur: null, drawing: false, crop: item.crop ? { ...item.crop } : null, cropHist: [], drag: null, turned: false });
   ed.small.clear();
   edCanvas.width = base.width; edCanvas.height = base.height;
   $("edTitle").textContent = `編集 · ${outName(item)}`;
@@ -529,6 +603,7 @@ async function openEditor(item) {
   document.body.style.overflow = "hidden";
   setMode(ed.mode);
   applyRatio(0);
+  updateCropUndo();
   $("edDone").focus();
 }
 
@@ -547,23 +622,24 @@ async function finishEditor() {
   $("edDone").disabled = true;
   try {
     const crop = isFullCrop(ed.crop) ? null : ed.crop;
-    let out = edCanvas;
+    const toPng = (c) => new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"));
+    // 回転・反転は元画像そのものに反映し、次に開いたときの基準にする
+    if (ed.turned) { item.basePng = await toPng(ed.base); item.turned = true; }
+    let result = edCanvas;
     if (crop) {
-      out = document.createElement("canvas");
-      out.width = crop.w; out.height = crop.h;
-      out.getContext("2d").drawImage(edCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+      result = document.createElement("canvas");
+      result.width = crop.w; result.height = crop.h;
+      result.getContext("2d").drawImage(edCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
     }
-    const blob = ed.strokes.length || crop
-      ? await new Promise((res, rej) => out.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"))
-      : item.basePng;
+    const blob = ed.strokes.length || crop ? await toPng(result) : item.basePng;
     URL.revokeObjectURL(item.url);
     item.png = blob; item.url = URL.createObjectURL(blob); item.strokes = ed.strokes.slice(); item.crop = crop;
-    item.w = out.width; item.h = out.height;
+    item.w = result.width; item.h = result.height;
     closeEditor();
     renderCard(item); refresh();
-    const edits = [item.strokes.length && "モザイク", crop && "トリミング"].filter(Boolean);
-    if (out.format !== "png") updateSizes();
-    toast(edits.length ? `${outName(item)} に${edits.join("と")}を反映しました。` : `${outName(item)} を元の画像に戻しました。`);
+    const edits = editLabels(item);
+    if (!isPassThrough(item)) updateSizes();
+    toast(edits.length ? `${outName(item)} に${edits.join("・")}を反映しました。` : `${outName(item)} を元の画像に戻しました。`);
   } catch (e) {
     toast(`編集を保存できませんでした (${e?.message || e})。`);
   } finally {
@@ -592,7 +668,7 @@ edCanvas.addEventListener("pointerdown", (e) => {
   edCanvas.setPointerCapture(e.pointerId);
   moveRing(e);
   const [x, y] = toImage(e);
-  ed.cur = { shape: ed.shape, size: brushPx(), block: blockPx(), pts: [[x, y]] };
+  ed.cur = { kind: ed.kind, shape: ed.shape, size: brushPx(), block: blockPx(), pts: [[x, y]] };
   ed.strokes.push(ed.cur);
   ed.drawing = true;
   stamp(x, y, ed.cur);
@@ -621,6 +697,45 @@ function setShape(shape) {
 }
 $("shapeCircle").onclick = () => setShape("circle");
 $("shapeSquare").onclick = () => setShape("square");
+function setKind(kind) {
+  ed.kind = kind;
+  document.querySelectorAll("#kinds button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.k === kind));
+  $("blockBox").hidden = kind === "fill";
+  $("blockLbl").textContent = kind === "blur" ? "強さ" : "粗さ";
+}
+document.querySelectorAll("#kinds button").forEach((b) => b.onclick = () => setKind(b.dataset.k));
+
+// ---- 回転・反転 ----
+// 元画像を回し、記録済みのスタンプとトリミング枠の座標も同じように動かす
+function turn(kind) {
+  if (!ed.base) return;
+  const W = ed.base.width, H = ed.base.height;
+  const map = kind === "cw" ? ([x, y]) => [H - y, x] : kind === "ccw" ? ([x, y]) => [y, W - x] : ([x, y]) => [W - x, y];
+  const c = document.createElement("canvas");
+  [c.width, c.height] = kind === "flip" ? [W, H] : [H, W];
+  const ctx = c.getContext("2d");
+  if (kind === "cw") { ctx.translate(H, 0); ctx.rotate(Math.PI / 2); }
+  else if (kind === "ccw") { ctx.translate(0, W); ctx.rotate(-Math.PI / 2); }
+  else { ctx.translate(W, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(ed.base, 0, 0);
+  const mapRect = (r) => {
+    if (!r) return r;
+    const [ax, ay] = map([r.x, r.y]), [bx, by] = map([r.x + r.w, r.y + r.h]);
+    return { x: Math.min(ax, bx), y: Math.min(ay, by), w: Math.abs(bx - ax), h: Math.abs(by - ay) };
+  };
+  ed.strokes = ed.strokes.map((st) => ({ ...st, pts: st.pts.map(map) }));
+  ed.crop = mapRect(ed.crop);
+  ed.cropHist = ed.cropHist.map(mapRect);
+  ed.base = c; ed.small.clear(); ed.turned = true;
+  edCanvas.width = c.width; edCanvas.height = c.height;
+  if (ed.ratio && kind !== "flip") applyRatio(0);
+  redraw();
+  fitCanvas();
+}
+$("rotL").onclick = () => turn("ccw");
+$("rotR").onclick = () => turn("cw");
+$("flipH").onclick = () => turn("flip");
+
 $("edUndo").onclick = () => { ed.strokes.pop(); redraw(); };
 $("edReset").onclick = () => { ed.strokes = []; redraw(); };
 // ---- トリミング ----
@@ -629,7 +744,7 @@ const cropBox = $("cropBox");
 const isFullCrop = (c) => !c || (c.x === 0 && c.y === 0 && c.w === edCanvas.width && c.h === edCanvas.height);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const HINTS = {
-  mosaic: "隠したい所をタップしてスタンプ。なぞると続けてかけられます。",
+  mosaic: "隠したい所をタップしてスタンプ。なぞると続けてかけられます。モザイク・ぼかし・黒塗りから選べます。",
   crop: "枠をドラッグして移動、四隅をドラッグして大きさを変えます。",
 };
 
@@ -675,6 +790,7 @@ cropBox.addEventListener("pointerdown", (e) => {
   if (ed.mode !== "crop") return;
   e.preventDefault();
   cropBox.setPointerCapture(e.pointerId);
+  pushCrop();
   ed.drag = { kind: e.target.dataset.h || "move", start: toImage(e), rect: { ...ed.crop } };
 });
 cropBox.addEventListener("pointermove", (e) => {
@@ -699,8 +815,24 @@ cropBox.addEventListener("pointermove", (e) => {
 const endDrag = () => { ed.drag = null; };
 cropBox.addEventListener("pointerup", endDrag);
 cropBox.addEventListener("pointercancel", endDrag);
-document.querySelectorAll("#ratios button").forEach((b) => b.onclick = () => applyRatio(+b.dataset.r));
-$("cropReset").onclick = () => { ed.crop = { x: 0, y: 0, w: edCanvas.width, h: edCanvas.height }; applyRatio(0); };
+// トリミング枠の「元に戻す」: 変える直前の枠を積んでおく
+function pushCrop() {
+  if (!ed.crop) return;
+  const last = ed.cropHist[ed.cropHist.length - 1];
+  if (!last || ["x", "y", "w", "h"].some((k) => last[k] !== ed.crop[k])) ed.cropHist.push({ ...ed.crop });
+  if (ed.cropHist.length > 50) ed.cropHist.shift();
+  updateCropUndo();
+}
+const updateCropUndo = () => { $("cropUndo").disabled = ed.cropHist.length === 0; };
+// 動かさずに離したときは履歴を積みすぎないよう、同じ枠なら取り除く
+const endDragCheck = () => {
+  const last = ed.cropHist[ed.cropHist.length - 1];
+  if (last && ed.crop && ["x", "y", "w", "h"].every((k) => last[k] === ed.crop[k])) { ed.cropHist.pop(); updateCropUndo(); }
+};
+cropBox.addEventListener("pointerup", endDragCheck);
+document.querySelectorAll("#ratios button").forEach((b) => b.onclick = () => { pushCrop(); applyRatio(+b.dataset.r); endDragCheck(); });
+$("cropReset").onclick = () => { pushCrop(); ed.crop = { x: 0, y: 0, w: edCanvas.width, h: edCanvas.height }; applyRatio(0); endDragCheck(); };
+$("cropUndo").onclick = () => { const prev = ed.cropHist.pop(); if (prev) ed.crop = prev; updateCropUndo(); layoutCrop(); };
 $("modeMosaic").onclick = () => setMode("mosaic");
 $("modeCrop").onclick = () => setMode("crop");
 
@@ -709,7 +841,7 @@ $("edDone").onclick = finishEditor;
 document.addEventListener("keydown", (e) => {
   if ($("editor").hidden) return;
   if (e.key === "Escape") closeEditor();
-  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); $("edUndo").click(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); $(ed.mode === "crop" ? "cropUndo" : "edUndo").click(); }
 });
 
 async function libToPng(file) {
@@ -791,6 +923,9 @@ document.querySelectorAll("#formats button").forEach((b) => {
   if (b.dataset.f === "webp" && !canWebp) { b.disabled = true; b.title = "このブラウザは WebP の書き出しに対応していません"; }
   b.onclick = () => setFormat(b.dataset.f);
 });
+$("maxSide").value = String(out.maxSide);
+if ($("maxSide").value !== String(out.maxSide)) { out.maxSide = 0; $("maxSide").value = "0"; }
+$("maxSide").onchange = () => { out.maxSide = +$("maxSide").value; setFormat(out.format); };
 $("quality").value = out.quality; $("qVal").textContent = out.quality;
 $("quality").oninput = () => { $("qVal").textContent = $("quality").value; };
 $("quality").onchange = () => { out.quality = +$("quality").value; setFormat(out.format); };
