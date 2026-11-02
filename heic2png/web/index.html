@@ -187,25 +187,25 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
   <header>
     <div class="brand">
       <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6" fill="#ffffff"/><path d="M21 16l-5-5-8 8"/></svg></div>
-      <h1>ピクポン<small>HEIC → PNG / JPEG · モザイク · トリミング · 回転</small></h1>
+      <h1>ピクポン<small>画像を PNG / JPEG / WebP に · モザイク · トリミング · 回転</small></h1>
     </div>
     <div class="head-side">
       <span class="tag">写真はこの端末から出ません</span>
       <button class="btn ghost small" id="phoneBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>スマホで開く</button>
     </div>
   </header>
-  <p class="lead">iPhone の写真(.heic)をポンと入れるだけで PNG や JPEG に。位置情報は自動で消えます。隠したい所にモザイク、いらない所はトリミング。変換も編集もこのページの中だけで行います。</p>
+  <p class="lead">iPhone の写真(HEIC)も、TIFF や AVIF も、ポンと入れるだけで PNG・JPEG・WebP に。位置情報は自動で消えます。隠したい所にモザイク、いらない所はトリミング。変換も編集もこのページの中だけで行います。</p>
 
-  <div class="drop" id="drop" tabindex="0" role="button" aria-label="HEIC ファイルを選ぶ">
-    <strong>ここに HEIC ファイルをドロップ</strong>
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="画像ファイルを選ぶ">
+    <strong>ここに画像をドロップ</strong>
     <span>または</span>
     <button class="btn" id="pick" type="button">ファイルを選ぶ</button>
-    <small>.heic .heif · 複数まとめて OK · 初回は変換エンジン(約 3 MB)を読み込みます</small>
-    <input type="file" id="file" accept=".heic,.heif,.hif,image/heic,image/heif" multiple hidden>
+    <small>HEIC · JPEG · PNG · WebP · AVIF · GIF · BMP · TIFF · SVG · ICO · 複数まとめて OK</small>
+    <input type="file" id="file" accept="image/*,.heic,.heif,.hif,.avif,.tif,.tiff,.svg,.ico,.bmp,.jxl" multiple hidden>
   </div>
 
   <div class="empty" id="empty">
-    <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから HEIC をドラッグするか、ボタンで選びます。</span></div>
+    <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから画像をドラッグするか、ボタンで選びます。形式はまぜて OK。</span></div>
     <div><b>2 · 変換</b><span>自動で変換され、下にプレビューが並びます。「編集」でモザイクやトリミングもできます。</span></div>
     <div><b>3 · 保存</b><span>PNG・JPEG・WebP から選んで保存。位置情報などの撮影情報は自動で消えます。</span></div>
   </div>
@@ -338,6 +338,26 @@ let heicLib;
 const loadHeicLib = () => (heicLib ??= import(HEIC_LIB_URL).catch((e) => { heicLib = null; throw e; }));
 
 const HEIC_RE = /\.(heic|heif|hif)$/i;
+const IMAGE_RE = /\.(heic|heif|hif|jpe?g|jfif|png|apng|webp|avif|gif|bmp|dib|tiff?|svgz?|ico|cur|jxl)$/i;
+const extOf = (f) => (f.name.match(/\.([^.]+)$/)?.[1] || "").toUpperCase();
+function fileKind(f) {
+  if (HEIC_RE.test(f.name) || /heic|heif/.test(f.type)) return "heic";
+  if (/\.tiff?$/i.test(f.name) || f.type === "image/tiff") return "tiff";
+  if (/\.svgz?$/i.test(f.name) || f.type === "image/svg+xml") return "svg";
+  return "other";
+}
+
+// TIFF は Safari 以外のブラウザで読めないので、必要になったときだけ UTIF(と圧縮の展開に使う pako)を読み込む
+const PAKO_URL = "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako_inflate.min.js";
+const UTIF_URL = "https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js";
+const loadScript = (src) => new Promise((res, rej) => {
+  const el = document.createElement("script");
+  el.src = src; el.onload = res; el.onerror = () => rej(new Error(`${src} を読み込めませんでした`));
+  document.head.append(el);
+});
+let tiffLib;
+const loadTiffLib = () => (tiffLib ??= loadScript(PAKO_URL).then(() => loadScript(UTIF_URL)).then(() => window.UTIF)
+  .catch((e) => { tiffLib = null; e.libLoad = true; throw e; }));
 const fmtSize = (n) => n < 1024 ? n + " B" : n < 1024 * 1024 ? (n / 1024).toFixed(0) + " KB" : (n / 1024 / 1024).toFixed(1) + " MB";
 const pngName = (name) => name.replace(/\.[^.]+$/, "") + ".png";
 
@@ -393,7 +413,7 @@ function renderInfo(item) {
   if (!el) return;
   if (!item.png) { el.textContent = fmtSize(item.file.size); return; }
   const blob = cachedBlob(item), d = outDims(item);
-  el.textContent = `${d.w}×${d.h} · ${fmtSize(item.file.size)} → ${blob ? fmtSize(blob.size) : "計算中…"}`;
+  el.textContent = `${extOf(item.file) || "画像"} → ${fmt().label} · ${d.w}×${d.h} · ${fmtSize(item.file.size)} → ${blob ? fmtSize(blob.size) : "計算中…"}`;
   item.el.querySelector(".name").textContent = outName(item);
 }
 
@@ -497,7 +517,7 @@ function removeItem(item) {
 
 async function convert(item) {
   try {
-    item.png = await nativeToPng(item.file).catch(() => null) || await libToPng(item.file);
+    item.png = await decodeToPng(item.file);
     item.url = URL.createObjectURL(item.png);
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = item.url; });
     item.w = img.naturalWidth; item.h = img.naturalHeight;
@@ -506,21 +526,67 @@ async function convert(item) {
     console.error("convert failed", item.file.name, e);
     item.error = e?.libLoad
       ? "変換ライブラリを読み込めませんでした。通信状況を確認して、もう一度ファイルを選んでください。"
-      : `読み込めませんでした (${e?.message || e})。ファイルが壊れていないか確認してください。`;
+      : `読み込めませんでした。${e?.message || e}。`;
   }
   if (item.removed) return;
   renderCard(item); refresh();
   if (item.png && !isPassThrough(item)) updateSizes();
 }
 
-// Safari など HEIC を直接読めるブラウザ、または iPhone が JPEG に変換して渡してきた場合
+// まずブラウザ自身で読む。読めなければ形式ごとの方法に切り替える
+async function decodeToPng(file) {
+  const kind = fileKind(file);
+  if (kind === "svg") return imgToPng(file, true);
+  try { return await nativeToPng(file); } catch {}
+  if (kind === "heic") return libToPng(file);
+  if (kind === "tiff") return tiffToPng(file);
+  try { return await imgToPng(file, false); } catch {}
+  const ext = extOf(file);
+  // どのブラウザでも読めるはずの形式なら、ファイル自体の問題
+  if (/^(JPE?G|JFIF|PNG|GIF|WEBP|BMP|ICO)$/.test(ext) || !ext) throw new Error("ファイルが壊れているか、中身が画像ではありません");
+  throw new Error(`${ext} 形式はこのブラウザでは読めません。Safari で開くか、別の形式に書き出してから試してください`);
+}
+
+const canvasToPng = (c) => new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"));
+
 async function nativeToPng(file) {
   const bmp = await createImageBitmap(file);
   const c = document.createElement("canvas");
   c.width = bmp.width; c.height = bmp.height;
   c.getContext("2d").drawImage(bmp, 0, 0);
   bmp.close();
-  return new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error("PNG を作れませんでした")), "image/png"));
+  return canvasToPng(c);
+}
+
+// <img> でしか読めない形式(SVG など)。SVG は小さいと粗くなるので長い辺 1024px 以上で描く
+async function imgToPng(file, isSvg) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("画像として読めませんでした")); i.src = url; });
+    let w = img.naturalWidth || 1024, h = img.naturalHeight || 1024;
+    if (isSvg && Math.max(w, h) < 1024) { const k = 1024 / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    return canvasToPng(c);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function tiffToPng(file) {
+  const UTIF = await loadTiffLib();
+  const buf = await file.arrayBuffer();
+  const ifds = UTIF.decode(buf);
+  // 複数ページのときは 1 ページ目
+  const page = ifds[0];
+  if (!page) throw new Error("TIFF の中に画像が見つかりませんでした");
+  UTIF.decodeImage(buf, page, ifds);
+  const rgba = UTIF.toRGBA8(page);
+  const c = document.createElement("canvas");
+  c.width = page.width; c.height = page.height;
+  c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.length), page.width, page.height), 0, 0);
+  return canvasToPng(c);
 }
 
 // ---- 編集(モザイク・トリミング) ----
@@ -852,10 +918,10 @@ async function libToPng(file) {
 
 async function addFiles(list) {
   const files = [...list];
-  const heic = files.filter((f) => HEIC_RE.test(f.name) || f.type.startsWith("image/"));
-  const skipped = files.length - heic.length;
+  const images = files.filter((f) => IMAGE_RE.test(f.name) || f.type.startsWith("image/"));
+  const skipped = files.length - images.length;
   toast(skipped ? `${skipped} 件は画像ではないのでスキップしました。` : "");
-  for (const file of heic) {
+  for (const file of images) {
     const item = { file, out: pngName(file.name) };
     items.push(item);
     $("grid").append(renderCard(item));
