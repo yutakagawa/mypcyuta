@@ -235,13 +235,63 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .track .bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width .2s; }
 .track audio { grid-column: 1 / -1; width: 100%; height: 36px; }
 .track .err-msg { grid-column: 1 / -1; }
+
+/* ---- QR・文字・計算ツール共通のパネルと入力欄 ---- */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel h3 { font-family: var(--font-display); font-weight: 800; font-size: 18px; margin: 0; }
+.panel > .seg { align-self: flex-start; max-width: 100%; }
+.two-col, .util-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 13px; color: var(--muted); }
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.field-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; justify-content: space-between; }
+.field input[type=text], .field input[type=number], .field input[type=date], .field select, .panel textarea {
+  font: 15px var(--font-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; width: 100%; min-width: 0;
+}
+.panel textarea { resize: vertical; line-height: 1.7; }
+.field input:focus-visible, .field select:focus-visible, .panel textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field.color input { width: 48px; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.field input[type=range] { accent-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--fg); }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 12px; }
+.drop.compact { padding: 22px 16px; gap: 10px; }
+.qr-preview { align-self: center; width: min(260px, 100%); aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--checker); }
+.qr-preview svg { display: block; width: 100%; height: 100%; }
+.qr-placeholder { margin: 0; padding: 16px; text-align: center; font-size: 13px; color: var(--muted); }
+.qr-result { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.qr-result p { margin: 0; overflow-wrap: anywhere; }
+#qrResText { font-family: var(--font-mono); font-size: 14px; background: var(--bg); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.text-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 720px) { .text-layout { grid-template-columns: 1fr; } }
+.side-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stats div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stats span { font-size: 12px; color: var(--muted); }
+.stats b { font-family: var(--font-mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+.stats div:first-child b { color: var(--accent); font-size: 26px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-row button { font: 500 13px var(--font-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.chip-row button:hover { border-color: var(--accent); color: var(--accent); }
+.chip-row button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.u-out { background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: var(--muted); }
+.u-out p { margin: 0; }
+.u-big { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--fg); font-variant-numeric: tabular-nums; }
+.u-note { margin: 0; font-size: 13px; color: var(--muted); }
+.pw-out { margin: 0; font-family: var(--font-mono); font-size: 18px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow-wrap: anywhere; user-select: all; }
+.pw-strength { margin: 0; font-size: 13px; }
+.pw-strength[data-level=ok] { color: var(--ok); } .pw-strength[data-level=warn] { color: var(--accent); } .pw-strength[data-level=err] { color: var(--err); }
+@media (max-width: 640px) {
+  .nav { flex-wrap: nowrap; overflow-x: auto; margin-inline: -4px; padding: 2px 4px 6px; }
+  .nav button { flex: none; }
+}
 </style>
 
 <div class="wrap">
   <header>
     <div class="brand">
       <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9 8V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V8"/><path d="M3 13h18"/><path d="M11 13v2h2v-2"/></svg></div>
-      <h1>ポンキット<small>画像・PDF・音声を、この端末の中でポンと処理</small></h1>
+      <h1>ポンキット<small>画像・PDF・音声・QR・文字の道具を、この端末の中で</small></h1>
     </div>
     <div class="head-side">
       <span class="tag">ファイルはこの端末から出ません</span>
@@ -254,6 +304,9 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
     <button type="button" data-go="image">ピクポン<span>画像</span></button>
     <button type="button" data-go="pdf">PDFポン<span>PDF</span></button>
     <button type="button" data-go="audio">オトポン<span>音声</span></button>
+    <button type="button" data-go="qr">QRポン<span>QR</span></button>
+    <button type="button" data-go="text">モジポン<span>文字</span></button>
+    <button type="button" data-go="util">ベンリポン<span>計算</span></button>
   </nav>
 
   <section id="home" class="hub" aria-label="ツール一覧">
@@ -277,6 +330,27 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
       <p>録音や音楽ファイルを、小さな MP3 に圧縮します。動画ファイルから音声だけを取り出すこともできます。</p>
       <ul><li>声向け・標準・高音質から選ぶだけ</li><li>WAV・M4A・MP4 などに対応</li></ul>
       <button class="btn" type="button" data-go="audio">音声を軽くする</button>
+    </article>
+    <article class="hub-card">
+      <div class="hub-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg></div>
+      <h2>QRポン</h2>
+      <p>URL や文章、Wi-Fi の接続情報を QR コードに。画像やスクリーンショットに写った QR コードの読み取りもできます。</p>
+      <ul><li>色を変えて PNG・SVG で保存</li><li>貼り付けた画像からも読み取り</li></ul>
+      <button class="btn" type="button" data-go="qr">QR コードを作る・読む</button>
+    </article>
+    <article class="hub-card">
+      <div class="hub-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg></div>
+      <h2>モジポン</h2>
+      <p>文字数や原稿用紙の枚数をすぐに数えます。全角・半角、ひらがな・カタカナ、空白や改行の整理もボタン一つで。</p>
+      <ul><li>空白・改行を除いた文字数も</li><li>変換は「元に戻す」で取り消せる</li></ul>
+      <button class="btn" type="button" data-go="text">文字を数える・整える</button>
+    </article>
+    <article class="hub-card">
+      <div class="hub-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11v6M8 15h2M12 15h2M8 19h2M12 19h2"/></svg></div>
+      <h2>ベンリポン</h2>
+      <p>割り勘、日付の計算(何日後・何日間)、安全なパスワードの作成。ちょっとした計算をまとめました。</p>
+      <ul><li>割り勘は 10 円・100 円単位で</li><li>パスワードは端末の中で作成</li></ul>
+      <button class="btn" type="button" data-go="util">計算する</button>
     </article>
   </section>
 
@@ -417,6 +491,155 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
       <div class="tracks" id="auList"></div>
     </section>
   </section>
+
+  <section id="tool-qr" class="tool" hidden>
+    <div class="tool-head"><h2>QRポン</h2><span>QR コードを作る・読む</span></div>
+    <div class="two-col">
+      <section class="panel" aria-labelledby="qrMakeTitle">
+        <h3 id="qrMakeTitle">作る</h3>
+        <div class="seg" role="group" aria-label="内容の種類" id="qrKinds">
+          <button type="button" data-k="text" aria-pressed="true">URL・文章</button>
+          <button type="button" data-k="wifi" aria-pressed="false">Wi-Fi</button>
+        </div>
+        <div id="qrTextBox" class="field">
+          <label for="qrText">QR コードにする内容</label>
+          <textarea id="qrText" rows="3">https://claude.ai/artifact/AVYNTaWKG7QtnXvbAumcJF</textarea>
+        </div>
+        <div id="qrWifiBox" class="field-grid" hidden>
+          <div class="field"><label for="qrSsid">ネットワーク名(SSID)</label><input id="qrSsid" type="text" autocomplete="off"></div>
+          <div class="field"><label for="qrSec">暗号化</label><select id="qrSec"><option value="WPA">WPA / WPA2 / WPA3</option><option value="WEP">WEP</option><option value="nopass">なし</option></select></div>
+          <div class="field" id="qrPassRow"><label for="qrPass">パスワード</label><input id="qrPass" type="text" autocomplete="off"></div>
+          <label class="check" for="qrHidden"><input id="qrHidden" type="checkbox">ネットワーク名を隠している</label>
+        </div>
+        <div class="field-row">
+          <div class="field color"><label for="qrFg">色</label><input id="qrFg" type="color" value="#1d2a3a"></div>
+          <button class="btn ghost small" id="qrSwap" type="button" aria-label="色と背景を入れ替える">⇄</button>
+          <div class="field color"><label for="qrBg">背景</label><input id="qrBg" type="color" value="#ffffff"></div>
+          <div class="field"><span class="lbl" id="qrEclLbl">誤り訂正</span>
+            <div class="seg" role="group" aria-labelledby="qrEclLbl" id="qrEcl">
+              <button type="button" data-e="L" aria-pressed="false">低</button>
+              <button type="button" data-e="M" aria-pressed="true">中</button>
+              <button type="button" data-e="H" aria-pressed="false">高</button>
+            </div>
+          </div>
+        </div>
+        <div class="qr-preview" id="qrPreview"></div>
+        <p class="u-note" id="qrNote"></p>
+        <div class="field-row">
+          <div class="field"><label for="qrPx">PNG の大きさ</label><select id="qrPx"><option value="512">512px</option><option value="1024" selected>1024px</option><option value="2048">2048px</option></select></div>
+          <div class="actions">
+            <button class="btn ghost" id="qrSaveSvg" type="button" disabled>SVG で保存</button>
+            <button class="btn" id="qrSavePng" type="button" disabled>PNG で保存</button>
+          </div>
+        </div>
+        <div class="toast" id="qrToast" aria-live="polite"></div>
+      </section>
+      <section class="panel" aria-labelledby="qrReadTitle">
+        <h3 id="qrReadTitle">読み取る</h3>
+        <div class="drop compact" id="qrReadDrop" tabindex="0" role="button" aria-label="QR コードが写った画像を選ぶ">
+          <strong>QR が写った画像をドロップ</strong>
+          <button class="btn" id="qrReadPick" type="button">画像を選ぶ</button>
+          <small>スクリーンショットの貼り付け(Ctrl / ⌘ + V)でも読み取れます</small>
+          <input type="file" id="qrReadFile" accept="image/*,.heic,.heif" hidden>
+        </div>
+        <div class="toast" id="qrReadToast" aria-live="polite"></div>
+        <div class="qr-result" id="qrResult" hidden>
+          <span class="lbl">読み取った内容</span>
+          <p id="qrResText"></p>
+          <p class="gps" id="qrResWifi" hidden></p>
+          <div class="actions">
+            <a class="btn ghost" id="qrResLink" href="#" target="_blank" rel="noopener noreferrer" hidden>リンクを開く</a>
+            <button class="btn" id="qrResCopy" type="button">コピー</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section id="tool-text" class="tool" hidden>
+    <div class="tool-head"><h2>モジポン</h2><span>文字数を数える・整える</span></div>
+    <div class="text-layout">
+      <div class="panel">
+        <label class="lbl" for="txArea">文章(打った内容はこの端末にだけ残ります)</label>
+        <textarea id="txArea" rows="12" spellcheck="false"></textarea>
+        <div class="actions">
+          <button class="btn ghost" id="txUndo" type="button">元に戻す</button>
+          <button class="btn ghost" id="txClear" type="button">消す</button>
+          <button class="btn" id="txCopy" type="button">コピー</button>
+        </div>
+        <div class="toast" id="txToast" aria-live="polite"></div>
+      </div>
+      <div class="side-col">
+        <div class="panel stats" id="txStats" aria-live="polite"></div>
+        <div class="panel tx-tools" id="txTools">
+          <span class="lbl">まとめて変換</span>
+          <div class="chip-row">
+            <button type="button" data-t="half">英数字を半角に</button>
+            <button type="button" data-t="full">英数字を全角に</button>
+            <button type="button" data-t="kana">半角カナを全角に</button>
+            <button type="button" data-t="hira">カタカナ → ひらがな</button>
+            <button type="button" data-t="kata">ひらがな → カタカナ</button>
+            <button type="button" data-t="trim">行頭・行末の空白を消す</button>
+            <button type="button" data-t="spaces">続く空白を 1 つに</button>
+            <button type="button" data-t="blank">続く空行を 1 つに</button>
+            <button type="button" data-t="join">改行をすべて消す</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tool-util" class="tool" hidden>
+    <div class="tool-head"><h2>ベンリポン</h2><span>割り勘・日付・パスワード</span></div>
+    <div class="util-grid">
+      <section class="panel" aria-labelledby="wkTitle">
+        <h3 id="wkTitle">割り勘</h3>
+        <div class="field-grid">
+          <div class="field"><label for="wkTotal">合計金額(円)</label><input id="wkTotal" type="number" inputmode="numeric" min="0" step="1" value="12800"></div>
+          <div class="field"><label for="wkPeople">人数</label><input id="wkPeople" type="number" inputmode="numeric" min="1" step="1" value="5"></div>
+          <div class="field"><label for="wkUnit">集める単位</label><select id="wkUnit"><option value="1">1 円</option><option value="10">10 円</option><option value="100" selected>100 円</option><option value="500">500 円</option><option value="1000">1000 円</option></select></div>
+        </div>
+        <div class="seg" role="group" aria-label="端数の扱い" id="wkMode">
+          <button type="button" data-m="up" aria-pressed="true">切り上げ(余りが出る)</button>
+          <button type="button" data-m="down" aria-pressed="false">幹事が多めに払う</button>
+        </div>
+        <div class="u-out" id="wkOut" aria-live="polite"></div>
+      </section>
+      <section class="panel" aria-labelledby="dtTitle">
+        <h3 id="dtTitle">日付の計算</h3>
+        <span class="lbl">2 つの日付の間は何日?</span>
+        <div class="field-grid">
+          <div class="field"><label for="dtFrom">から</label><input id="dtFrom" type="date"></div>
+          <div class="field"><label for="dtTo">まで</label><input id="dtTo" type="date"></div>
+        </div>
+        <label class="check" for="dtInclude"><input id="dtInclude" type="checkbox">初日も 1 日として数える</label>
+        <div class="u-out" id="dtBetweenOut" aria-live="polite"></div>
+        <span class="lbl">何日後(前)は何日?</span>
+        <div class="field-grid">
+          <div class="field"><label for="dtBase">基準の日</label><input id="dtBase" type="date"></div>
+          <div class="field"><label for="dtDays">日数(前はマイナス)</label><input id="dtDays" type="number" inputmode="numeric" step="1" value="100"></div>
+        </div>
+        <div class="u-out" id="dtAfterOut" aria-live="polite"></div>
+      </section>
+      <section class="panel" aria-labelledby="pwTitle">
+        <h3 id="pwTitle">パスワード作成</h3>
+        <label class="field" for="pwLen"><span>長さ <b id="pwLenVal">16</b> 文字</span><input id="pwLen" type="range" min="8" max="64" step="1" value="16"></label>
+        <div class="check-grid">
+          <label class="check" for="pw_upper"><input id="pw_upper" type="checkbox" checked>大文字 A-Z</label>
+          <label class="check" for="pw_lower"><input id="pw_lower" type="checkbox" checked>小文字 a-z</label>
+          <label class="check" for="pw_digit"><input id="pw_digit" type="checkbox" checked>数字 0-9</label>
+          <label class="check" for="pw_symbol"><input id="pw_symbol" type="checkbox">記号 !#$%…</label>
+          <label class="check" for="pwPlain"><input id="pwPlain" type="checkbox" checked>0 と O、1 と l など紛らわしい文字を使わない</label>
+        </div>
+        <p class="pw-out" id="pwOut"></p>
+        <p class="pw-strength" id="pwStrength"></p>
+        <div class="actions">
+          <button class="btn ghost" id="pwNew" type="button">作り直す</button>
+          <button class="btn" id="pwCopy" type="button">コピー</button>
+        </div>
+      </section>
+    </div>
+  </section>
 </div>
 
 <div class="editor" id="editor" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
@@ -502,5 +725,8 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 <script src="tool-image.js"></script>
 <script src="tool-pdf.js"></script>
 <script src="tool-audio.js"></script>
+<script src="tool-qr.js"></script>
+<script src="tool-text.js"></script>
+<script src="tool-util.js"></script>
 <script src="app.js"></script>
 

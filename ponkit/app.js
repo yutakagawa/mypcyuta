@@ -1,7 +1,7 @@
 // ポンキット: ツールの切り替えと「スマホで開く」
 // ブロック内の function はグローバルに漏れるので、関数で包んで他のツールと名前がぶつからないようにする
 (() => {
-  const TOOLS = ["image", "pdf", "audio"];
+  const TOOLS = ["image", "pdf", "audio", "qr", "text", "util"];
 
   function showTool(tool) {
     const active = TOOLS.includes(tool) ? tool : null;
@@ -13,7 +13,7 @@
     window.scrollTo(0, 0);
   }
   document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => showTool(b.dataset.go)));
-  // 共有リンクの #image / #pdf / #audio でそのツールを開く
+  // 共有リンクの #image や #qr などでそのツールを開く
   showTool(location.hash.slice(1));
 
   // ---- スマホで開く ----
