@@ -4,29 +4,31 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=IBM+Plex+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 /* Layout: 一列のワークベンチ。上にドロップゾーン、下に変換結果の「ライトボックス」グリッド。
-   明るい一つの見た目に統一(ダークモードでも明るいまま) */
+   暗い一つの見た目に統一(端末がライトモードでも暗いまま) */
 :root {
-  --bg: #f4f9ff;
-  --surface: #ffffff;
-  --fg: #1d2a3a;
-  --muted: #627488;
-  --line: #d9e5f1;
-  --accent: #e9542a;
-  --accent-ink: #ffffff;
-  --accent-soft: #fff1eb;
-  --sky: #e3f1ff;
-  --ok: #129a6a;
-  --err: #db3b33;
-  --checker: #edf3f9;
+  --bg: #0e1319;
+  --surface: #161d26;
+  --fg: #e6ecf3;
+  --muted: #8f9cab;
+  --line: #28323f;
+  --accent: #ff7a45;
+  --accent-ink: #1a0d06;
+  --accent-soft: rgba(255, 122, 69, 0.14);
+  --sky: #182130;
+  --ok: #43cf94;
+  --err: #ff6b62;
+  --checker: #1d2530;
+  --paper: #ffffff;
   --ring-a: #ffffff;
-  --ring-b: rgba(29, 42, 58, 0.6);
-  --shade: rgba(244, 249, 255, 0.78);
-  --shade-soft: rgba(244, 249, 255, 0.5);
-  --grid: rgba(255, 255, 255, 0.75);
+  --ring-b: rgba(0, 0, 0, 0.6);
+  --shade: rgba(8, 11, 15, 0.74);
+  --shade-soft: rgba(8, 11, 15, 0.45);
+  --grid: rgba(255, 255, 255, 0.35);
+  --shadow: rgba(0, 0, 0, 0.55);
   --font-display: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
   --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  color-scheme: light;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -39,7 +41,7 @@ body {
 .wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
 header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
 .brand { display: flex; align-items: center; gap: 12px; }
-.logo { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); display: grid; place-items: center; transform: rotate(-6deg); box-shadow: 0 6px 16px -6px var(--accent); }
+.logo { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; transform: rotate(-6deg); box-shadow: 0 6px 16px -6px var(--accent); }
 .logo svg { width: 26px; height: 26px; }
 h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 5vw, 40px); line-height: 1.1; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
 h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; margin-top: 2px; }
@@ -56,10 +58,10 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
   padding-top: calc(env(safe-area-inset-top, 0px) + 16px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.qr-card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px; width: min(360px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; box-shadow: 0 20px 50px -20px rgba(29, 42, 58, 0.35); }
+.qr-card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px; width: min(360px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; box-shadow: 0 20px 50px -20px var(--shadow); }
 .qr-card h2 { font-family: var(--font-display); font-weight: 800; font-size: 20px; margin: 0; }
 .qr-card p { margin: 0; font-size: 13.5px; color: var(--muted); }
-.qr-code { width: 220px; max-width: 100%; aspect-ratio: 1; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.qr-code { width: 220px; max-width: 100%; aspect-ratio: 1; padding: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; }
 .qr-code svg { display: block; width: 100%; height: 100%; }
 .qr-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 13px; color: var(--fg); width: 100%; }
 .qr-steps li { display: flex; gap: 8px; }
@@ -133,7 +135,7 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .del {
   position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer;
-  display: grid; place-items: center; box-shadow: 0 2px 8px -4px rgba(29, 42, 58, 0.4);
+  display: grid; place-items: center; box-shadow: 0 2px 8px -4px var(--shadow);
 }
 .del:hover, .del:focus-visible { color: var(--err); border-color: var(--err); outline: none; }
 .del svg { width: 14px; height: 14px; }
@@ -290,7 +292,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 <div class="wrap">
   <header>
     <div class="brand">
-      <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9 8V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V8"/><path d="M3 13h18"/><path d="M11 13v2h2v-2"/></svg></div>
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9 8V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V8"/><path d="M3 13h18"/><path d="M11 13v2h2v-2"/></svg></div>
       <h1>ポンキット<small>画像・PDF・音声・QR・文字の道具を、この端末の中で</small></h1>
     </div>
     <div class="head-side">
