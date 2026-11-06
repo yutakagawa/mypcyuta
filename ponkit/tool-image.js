@@ -145,7 +145,7 @@ function renderCard(item) {
       <div class="info"></div>
       ${item.gps ? '<div class="gps">位置情報あり → 保存時に削除</div>' : ""}
       ${item.error ? '<div class="err-msg"></div>' : ""}
-      <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}>編集</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
+      <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}>モザイク・編集</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
     </div>`;
   if (item.url) { const img = new Image(); img.src = item.url; img.alt = outName(item); card.querySelector(".thumb").append(img); }
   card.querySelector(".name").textContent = item.file.name;
