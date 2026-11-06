@@ -128,6 +128,7 @@ function refresh() {
   const failed = items.filter((i) => i.error).length;
   $("results").hidden = items.length === 0;
   $("empty").hidden = items.length > 0;
+  $("mosaicHint").hidden = items.length > 0;
   $("count").textContent = `${items.length} 枚中 ${done} 枚変換済み` + (failed ? ` · ${failed} 枚失敗` : "");
   $("saveAll").disabled = !downloads || done === 0;
   $("saveAll").title = downloads ? "" : "このビューではファイル保存が使えません";
@@ -579,6 +580,32 @@ async function libToPng(file) {
   try { lib = await loadHeicLib(); } catch (e) { e.libLoad = true; throw e; }
   return lib.heicTo({ blob: file, type: "image/png" });
 }
+
+// 見本の画像(架空の名札と車のナンバー)を作って、そのまま編集画面を開く
+async function trySample() {
+  const c = document.createElement("canvas");
+  c.width = 1600; c.height = 1000;
+  const ctx = c.getContext("2d");
+  const sky = ctx.createLinearGradient(0, 0, 0, 1000);
+  sky.addColorStop(0, "#9cc8ef"); sky.addColorStop(1, "#e9f2f8");
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, 1600, 1000);
+  ctx.fillStyle = "#6b8f5a"; ctx.fillRect(0, 720, 1600, 280);
+  // 名札
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(160, 220, 560, 320);
+  ctx.strokeStyle = "#e9542a"; ctx.lineWidth = 14; ctx.strokeRect(160, 220, 560, 320);
+  ctx.fillStyle = "#1d2a3a"; ctx.font = "bold 72px sans-serif"; ctx.fillText("見本 太郎", 220, 360);
+  ctx.font = "44px sans-serif"; ctx.fillText("000-0000-0000", 220, 460);
+  // 車とナンバー
+  ctx.fillStyle = "#c0392b"; ctx.fillRect(900, 520, 560, 220);
+  ctx.fillStyle = "#333333"; ctx.beginPath(); ctx.arc(1000, 750, 60, 0, Math.PI * 2); ctx.arc(1360, 750, 60, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(1060, 610, 240, 90);
+  ctx.fillStyle = "#1a7f4b"; ctx.font = "bold 40px sans-serif"; ctx.fillText("見本 00-00", 1075, 670);
+  const file = new File([await canvasToBlob(c)], "見本.png", { type: "image/png" });
+  await addFiles([file]);
+  const item = items.find((i) => i.file === file);
+  if (item?.png) openEditor(item);
+}
+$("trySample").onclick = trySample;
 
 async function addFiles(list) {
   const files = [...list];

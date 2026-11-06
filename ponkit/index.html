@@ -130,6 +130,9 @@ h1 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted
 .empty div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .empty b { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: .05em; }
 .empty span { color: var(--muted); font-size: 13.5px; }
+.mosaic-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; border: 1px dashed var(--line); border-radius: 12px; padding: 12px 16px; }
+.mosaic-hint span { font-size: 13.5px; color: var(--muted); min-width: 0; flex: 1 1 260px; }
+.mosaic-hint b { color: var(--fg); margin-right: 8px; }
 .toast { min-height: 1.4em; font-size: 13px; color: var(--muted); }
 .card-actions { display: flex; gap: 14px; margin-left: auto; white-space: nowrap; }
 .del {
@@ -372,6 +375,11 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
     <div><b>1 · 選ぶ</b><span>写真アプリやフォルダから画像をドラッグするか、ボタンで選びます。形式はまぜて OK。</span></div>
     <div><b>2 · 変換</b><span>自動で変換され、下にプレビューが並びます。「モザイク・編集」でモザイクやトリミングもできます。</span></div>
     <div><b>3 · 保存</b><span>PNG・JPEG・WebP から選んで保存。位置情報などの撮影情報は自動で消えます。</span></div>
+  </div>
+
+  <div class="mosaic-hint" id="mosaicHint">
+    <span><b>モザイクをかけたいときは</b>写真を入れると下に並ぶカードの「モザイク・編集」から。まずは見本の画像で試せます。</span>
+    <button class="btn ghost" id="trySample" type="button">見本の画像で試す</button>
   </div>
 
   <section id="results" hidden>
