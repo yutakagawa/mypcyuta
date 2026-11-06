@@ -129,6 +129,8 @@ function refresh() {
   $("results").hidden = items.length === 0;
   $("empty").hidden = items.length > 0;
   $("mosaicHint").hidden = items.length > 0;
+  $("drop").classList.toggle("slim", items.length > 0);
+  $("drop").querySelector("strong").textContent = items.length ? "画像を追加するときはここにドロップ" : "ここに画像をドロップ";
   $("count").textContent = `${items.length} 枚中 ${done} 枚変換済み` + (failed ? ` · ${failed} 枚失敗` : "");
   $("saveAll").disabled = !downloads || done === 0;
   $("saveAll").title = downloads ? "" : "このビューではファイル保存が使えません";
@@ -140,13 +142,13 @@ function renderCard(item) {
   const edits = editLabels(item);
   const status = item.png ? `<span class="pill ok">${[fmt().label, ...edits].join(" · ")}</span>` : item.error ? '<span class="pill err">失敗</span>' : '<span class="pill wait">変換中</span>';
   card.innerHTML = `
-    <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}<button class="del" type="button" aria-label="この写真を外す" title="外す"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="thumb">${item.url ? "" : item.error ? "" : '<div class="spin"></div>'}${item.png ? '<button class="thumb-edit" type="button">モザイク・編集</button>' : ""}<button class="del" type="button" aria-label="この写真を外す" title="外す"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="meta">
       <div class="name"></div>
       <div class="info"></div>
       ${item.gps ? '<div class="gps">位置情報あり → 保存時に削除</div>' : ""}
       ${item.error ? '<div class="err-msg"></div>' : ""}
-      <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}>モザイク・編集</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
+      <div class="row">${status}<span class="card-actions"><button class="save mosaic" type="button" ${item.png ? "" : "disabled"}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="5" height="5"/><rect x="10" y="3" width="5" height="5" opacity=".55"/><rect x="17" y="3" width="4" height="5"/><rect x="3" y="10" width="5" height="5" opacity=".55"/><rect x="10" y="10" width="5" height="5"/><rect x="17" y="10" width="4" height="5" opacity=".55"/><rect x="3" y="17" width="5" height="4"/><rect x="10" y="17" width="5" height="4" opacity=".55"/><rect x="17" y="17" width="4" height="4"/></svg>モザイク・編集</button><button class="save dl" type="button" ${item.png && downloads ? "" : "disabled"}>保存</button></span></div>
     </div>`;
   if (item.url) { const img = new Image(); img.src = item.url; img.alt = outName(item); card.querySelector(".thumb").append(img); }
   card.querySelector(".name").textContent = item.file.name;
@@ -155,6 +157,10 @@ function renderCard(item) {
   if (item.error) card.querySelector(".err-msg").textContent = item.error;
   card.querySelector(".dl").onclick = () => save(item);
   card.querySelector(".mosaic").onclick = () => openEditor(item);
+  // 写真そのものや、写真の上のボタンからも編集を開ける
+  card.querySelector(".thumb-edit")?.addEventListener("click", () => openEditor(item));
+  const img = card.querySelector(".thumb img");
+  if (img && item.png) { img.style.cursor = "pointer"; img.onclick = () => openEditor(item); }
   card.querySelector(".del").onclick = () => removeItem(item);
   return card;
 }
@@ -612,12 +618,19 @@ async function addFiles(list) {
   const images = files.filter((f) => IMAGE_RE.test(f.name) || f.type.startsWith("image/"));
   const skipped = files.length - images.length;
   toast(skipped ? `${skipped} 件は画像ではないのでスキップしました。` : "");
+  let first = null;
   for (const file of images) {
     const item = { file, out: pngName(file.name) };
     items.push(item);
     $("grid").append(renderCard(item));
+    first ??= item;
   }
   refresh();
+  // 入れた写真のカードが見えるところまで送る(狭い画面ではカードが下に隠れやすい)
+  if (first?.el) {
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    first.el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+  }
   for (const item of items.filter((i) => !i.png && !i.error && !i.started)) { item.started = true; await convert(item); }
 }
 
